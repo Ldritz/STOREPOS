@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getFirestore, initializeFirestore, persistentLocalCache } from "firebase/firestore";
 
 // Your web app's Firebase configuration, as provided
 const firebaseConfig = {
@@ -15,18 +15,25 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
-// Enable offline persistence
-enableIndexedDbPersistence(db)
-  .catch((err) => {
-    if (err.code == 'failed-precondition') {
-      // This can happen if multiple tabs are open.
-      console.warn('Firebase persistence failed: Only one tab can have persistence enabled at a time.');
-    } else if (err.code == 'unimplemented') {
-      // The browser is not supported.
-      console.error('Firebase persistence is not supported in this browser.');
+let db;
+
+try {
+    // Initialize Firestore with offline persistence using the recommended `initializeFirestore` function.
+    // This replaces `enableIndexedDbPersistence` and resolves the deprecation warning.
+    db = initializeFirestore(app, {
+        localCache: persistentLocalCache({}),
+    });
+} catch (err: any) {
+    if (err.code === 'failed-precondition') {
+        console.warn('Firebase persistence failed: This can happen if multiple tabs are open. Falling back to memory-only cache.');
+    } else if (err.code === 'unimplemented') {
+        console.error('Firebase persistence is not supported in this browser. Falling back to memory-only cache.');
+    } else {
+        console.error(`An error occurred while initializing Firestore with persistence: ${err.message}`);
     }
-  });
+    // Fallback to in-memory-only persistence if initialization with persistence fails.
+    db = getFirestore(app);
+}
 
 export { db };
