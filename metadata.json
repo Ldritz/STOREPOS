@@ -1,0 +1,6 @@
+{
+  "name": "Cashbook POS",
+  "description": "A simple and beautiful cashbook and inventory management application. Track your income, expenses, and inventory with ease, designed to function like a PWA.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
