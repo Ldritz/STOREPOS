@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import Card from './Card';
 
 // Error Boundary for Chart Components
@@ -36,7 +36,7 @@ class ChartErrorBoundary extends React.Component<
   }
 }
 
-// Income Expense Chart Component
+// Monthly Performance Line Chart Component
 interface ChartData { 
   name: string; 
   income: number; 
@@ -49,24 +49,72 @@ export const IncomeExpenseChart: React.FC<{ data: ChartData[] }> = ({ data }) =>
   return (
     <ChartErrorBoundary>
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+        <LineChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+          <defs>
+            <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0.1}/>
+            </linearGradient>
+            <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(var(--warning))" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="hsl(var(--warning))" stopOpacity={0.1}/>
+            </linearGradient>
+          </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={formatYAxis} />
+          <XAxis 
+            dataKey="name" 
+            stroke="hsl(var(--muted-foreground))" 
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis 
+            stroke="hsl(var(--muted-foreground))" 
+            fontSize={12} 
+            tickFormatter={formatYAxis}
+            tickLine={false}
+            axisLine={false}
+          />
           <Tooltip
-            cursor={{ fill: 'hsl(var(--accent))' }}
+            cursor={{ stroke: 'hsl(var(--accent))', strokeWidth: 1, strokeDasharray: '5 5' }}
             contentStyle={{
               backgroundColor: 'hsl(var(--popover))',
               borderColor: 'hsl(var(--border))',
               borderRadius: '0.5rem',
-              color: 'hsl(var(--popover-foreground))'
+              color: 'hsl(var(--popover-foreground))',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
             }}
-             labelStyle={{ fontWeight: 'bold' }}
+            labelStyle={{ fontWeight: 'bold' }}
+            formatter={(value: number, name: string) => [
+              `₱${value.toLocaleString()}`, 
+              name === 'income' ? 'Income' : 'Expense'
+            ]}
           />
-          <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }}/>
-          <Bar dataKey="income" fill="hsl(var(--success))" name="Income" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="expense" fill="hsl(var(--warning))" name="Expense" radius={[4, 4, 0, 0]} />
-        </BarChart>
+          <Legend 
+            wrapperStyle={{ color: 'hsl(var(--foreground))' }}
+            iconType="circle"
+          />
+          <Line 
+            type="monotone" 
+            dataKey="income" 
+            stroke="hsl(var(--success))" 
+            strokeWidth={3}
+            name="Income"
+            dot={{ fill: 'hsl(var(--success))', strokeWidth: 2, r: 4, stroke: 'hsl(var(--background))' }}
+            activeDot={{ r: 6, stroke: 'hsl(var(--success))', strokeWidth: 2, fill: 'hsl(var(--success))' }}
+            connectNulls={true}
+          />
+          <Line 
+            type="monotone" 
+            dataKey="expense" 
+            stroke="hsl(var(--warning))" 
+            strokeWidth={3}
+            name="Expense"
+            dot={{ fill: 'hsl(var(--warning))', strokeWidth: 2, r: 4, stroke: 'hsl(var(--background))' }}
+            activeDot={{ r: 6, stroke: 'hsl(var(--warning))', strokeWidth: 2, fill: 'hsl(var(--warning))' }}
+            connectNulls={true}
+          />
+        </LineChart>
       </ResponsiveContainer>
     </ChartErrorBoundary>
   );

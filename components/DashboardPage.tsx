@@ -273,14 +273,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, inventory, 
             </div>
 
             {/* Monthly Performance Chart */}
-            <Card title="Monthly Performance">
+            <Card title="Monthly Performance Trends">
                  {chartData.length > 0 ? (
                     <IncomeExpenseChartWrapper data={chartData} />
                 ) : (
                     <div className="h-full flex flex-col justify-center items-center text-center py-10 text-muted-foreground">
-                        <div className="text-4xl mb-2">📊</div>
+                        <div className="text-4xl mb-2">📈</div>
                         <p className="font-semibold">No transaction data for chart.</p>
-                        <p className="text-sm">Add some transactions to get started!</p>
+                        <p className="text-sm">Add some transactions to see your performance trends!</p>
                     </div>
                 )}
             </Card>
