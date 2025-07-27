@@ -142,7 +142,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
         }
     };
     
-    const formatCurrency = (num: number) => num.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
+    const formatCurrency = (num: number) => `₱${Math.round(num).toLocaleString('en-PH')}`;
 
     const renderIncomeForm = () => {
         const productGrid: ReactNode[] = [];
@@ -163,7 +163,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
                 >
                     <p className="font-bold text-foreground line-clamp-1">{item.name}</p>
                     <p className="text-xs text-muted-foreground capitalize">{item.category}</p>
-                    <p className="text-lg font-semibold text-success mt-1">{item.price.toLocaleString('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 })}</p>
+                    <p className="text-lg font-semibold text-success mt-1">{formatCurrency(item.price)}</p>
                     <div className="flex items-center justify-between mt-1">
                         <span className="text-xs text-muted-foreground">{item.stock} {item.unit} left</span>
                         {item.stock <= 0 && <span className="text-xs bg-destructive text-destructive-foreground font-bold px-2 py-0.5 rounded-full">Out</span>}
