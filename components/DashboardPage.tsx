@@ -4,8 +4,9 @@ import Card from './Card';
 import { Transaction, TransactionType, InventoryItem, Page } from '../types';
 import { TrendingUpIcon, TrendingDownIcon, WalletIcon } from './Icons';
 
-// Dynamic imports for recharts components to reduce bundle size
-const ChartComponents = lazy(() => import('./ChartComponents'));
+// Correct lazy loading for each chart component
+const IncomeExpenseChart = lazy(() => import('./ChartComponents').then(m => ({ default: m.IncomeExpenseChart })));
+const TopProductsChart = lazy(() => import('./ChartComponents').then(m => ({ default: m.TopProductsChart })));
 
 // Chart Loading Component
 const ChartLoading: React.FC = () => (
@@ -19,11 +20,11 @@ const ChartLoading: React.FC = () => (
 
 // Chart Component (styling changes for dark theme)
 interface ChartData { name: string; income: number; expense: number; }
-const IncomeExpenseChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
+const IncomeExpenseChartWrapper: React.FC<{ data: ChartData[] }> = ({ data }) => {
   return (
     <div className="w-full h-72 md:h-80">
       <Suspense fallback={<ChartLoading />}>
-        <ChartComponents.IncomeExpenseChart data={data} />
+        <IncomeExpenseChart data={data} />
       </Suspense>
     </div>
   );
@@ -89,11 +90,11 @@ const LowStockAlerts: React.FC<LowStockAlertsProps> = ({ inventory, onNavigate }
 interface TopProductsChartProps {
     data: { name: string; revenue: number }[];
 }
-const TopProductsChart: React.FC<TopProductsChartProps> = ({ data }) => {
+const TopProductsChartWrapper: React.FC<TopProductsChartProps> = ({ data }) => {
     return (
         <div className="w-full h-72 md:h-80">
             <Suspense fallback={<ChartLoading />}>
-                <ChartComponents.TopProductsChart data={data} />
+                <TopProductsChart data={data} />
             </Suspense>
         </div>
     );
@@ -200,12 +201,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, inventory, 
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <LowStockAlerts inventory={inventory} onNavigate={onNavigate} />
-                <TopProductsChart data={topProductsData} />
+                <TopProductsChartWrapper data={topProductsData} />
             </div>
 
             <Card title="Monthly Performance">
                  {chartData.length > 0 ? (
-                    <IncomeExpenseChart data={chartData} />
+                    <IncomeExpenseChartWrapper data={chartData} />
                 ) : (
                     <div className="h-full flex flex-col justify-center items-center text-center py-10 text-muted-foreground">
                         <p className="font-semibold">No transaction data for chart.</p>
