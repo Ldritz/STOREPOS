@@ -115,6 +115,11 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
         setCart(prev => prev.filter(item => item.itemId !== itemId));
     };
 
+    // Utility to remove undefined fields
+    function removeUndefinedFields<T extends object>(obj: T): T {
+        return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined)) as T;
+    }
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -122,13 +127,13 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
 
         if (type === TransactionType.Income) {
             if (cart.length > 0) {
-                const tx = {
+                const tx = removeUndefinedFields({
                     type,
                     amount: Math.round(totalAmount),
                     description: autoDescription,
                     date: transactionDate,
                     items: cart.map(c => ({ inventoryItemId: c.itemId, quantity: c.quantity })),
-                };
+                });
                 onAddTransaction(tx);
                 onClose();
             } else {
@@ -140,13 +145,13 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
                 setError('Please enter a valid amount and description.');
                 return;
             }
-            // Build the object WITHOUT the items field
-            const tx = {
+            const tx = removeUndefinedFields({
                 type,
                 amount: Math.round(numericAmount),
                 description,
-                date: transactionDate
-            };
+                date: transactionDate,
+                items: undefined // explicitly set to undefined so it will be removed
+            });
             onAddTransaction(tx);
             onClose();
         }
