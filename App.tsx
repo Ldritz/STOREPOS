@@ -264,25 +264,29 @@ const App: React.FC = () => {
 
   // Header: indicators always top-right, visible, with spacing
   const AppHeader: React.FC = () => (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 p-4 sticky top-0 z-30 bg-card border-b border-border">
-      <div className="flex items-center gap-4 min-w-0 flex-1">
+    <header className="sticky top-0 z-30 w-full px-0 md:px-8">
+      <div className="mx-auto max-w-6xl bg-card/80 backdrop-blur border-b border-border shadow-lg rounded-b-2xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-0">
+        {/* Left: Logo and Store Name */}
+        <div className="flex items-center gap-4 min-w-0 flex-1">
           {settings.storeLogo ? (
-              <img src={settings.storeLogo} alt="Store Logo" className="w-12 h-12 rounded-md object-cover flex-shrink-0 bg-secondary" />
+            <img src={settings.storeLogo} alt="Store Logo" className="w-14 h-14 rounded-xl object-cover flex-shrink-0 bg-secondary shadow" />
           ) : (
-              <div className="w-12 h-12 rounded-md flex-shrink-0 bg-secondary flex items-center justify-center text-muted-foreground">
-                   <OlescoLogo className="w-full h-full p-1 opacity-50" />
-              </div>
+            <div className="w-14 h-14 rounded-xl flex-shrink-0 bg-secondary flex items-center justify-center text-muted-foreground shadow">
+              <OlescoLogo className="w-full h-full p-2 opacity-50" />
+            </div>
           )}
-          <div className="truncate min-w-0">
-              <p className="text-sm text-muted-foreground truncate">Welcome to</p>
-              <h1 className="text-xl font-bold text-foreground truncate">{settings.storeName}</h1>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs text-muted-foreground font-medium leading-tight">Welcome to</span>
+            <span className="text-2xl font-extrabold text-foreground truncate leading-tight">{settings.storeName}</span>
           </div>
+        </div>
+        {/* Right: Status Indicators */}
+        <div className="flex-shrink-0 flex items-center gap-2 md:gap-4 mt-2 md:mt-0">
+          <OnlineStatusIndicator />
+          <SyncIndicator status={overallSyncStatus} details={syncDetails} />
+        </div>
       </div>
-      <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3 mt-2 sm:mt-0">
-        <OnlineStatusIndicator />
-        <SyncIndicator status={overallSyncStatus} details={syncDetails} />
-      </div>
-    </div>
+    </header>
   );
   
   const SideNav: React.FC = () => (
