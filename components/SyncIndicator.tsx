@@ -3,11 +3,25 @@ import { SyncStatus } from '../types';
 import { SyncedIcon, SyncingIcon, OfflineIcon } from './Icons';
 
 interface SyncIndicatorProps {
-  status: SyncStatus;
+  status: 'not_synced' | 'syncing' | 'synced';
   details?: string;
 }
 
 const statusConfig = {
+  not_synced: {
+    Icon: OfflineIcon,
+    text: 'Not Synced',
+    color: 'bg-destructive/20 text-destructive',
+    ring: 'ring-destructive/30',
+    animation: '',
+  },
+  syncing: {
+    Icon: SyncingIcon,
+    text: 'Syncing',
+    color: 'bg-info/20 text-info',
+    ring: 'ring-info/30',
+    animation: 'animate-spin',
+  },
   synced: {
     Icon: SyncedIcon,
     text: 'Synced',
@@ -15,31 +29,10 @@ const statusConfig = {
     ring: 'ring-success/30',
     animation: '',
   },
-  syncing: {
-    Icon: SyncingIcon,
-    text: 'Syncing…',
-    color: 'bg-info/20 text-info',
-    ring: 'ring-info/30',
-    animation: 'animate-spin',
-  },
-  offline: {
-    Icon: OfflineIcon,
-    text: 'Offline',
-    color: 'bg-warning/20 text-warning',
-    ring: 'ring-warning/30',
-    animation: '',
-  },
-  error: {
-    Icon: OfflineIcon,
-    text: 'Sync Error',
-    color: 'bg-destructive/20 text-destructive',
-    ring: 'ring-destructive/30',
-    animation: '',
-  },
 };
 
 const SyncIndicator: React.FC<SyncIndicatorProps> = ({ status, details }) => {
-  const { Icon, text, color, ring, animation } = statusConfig[status] || statusConfig['error'];
+  const { Icon, text, color, ring, animation } = statusConfig[status] || statusConfig['not_synced'];
   return (
     <div
       className={`flex items-center gap-2 px-3 py-1 rounded-full font-semibold shadow-sm border border-border ${color} ring-2 ${ring} transition-all duration-200 cursor-default`}

@@ -171,11 +171,11 @@ const App: React.FC = () => {
     trackUserAction('theme_changed', { theme });
   }, [updateSettings, trackUserAction]);
 
-  const overallSyncStatus = useMemo((): SyncStatus => {
+  // Map all non-synced states to 'not_synced', only allow 'syncing' and 'synced' as other states
+  const overallSyncStatus = useMemo((): 'not_synced' | 'syncing' | 'synced' => {
     const statuses = [settingsSyncStatus, transactionsSyncStatus, inventorySyncStatus];
     if (statuses.includes('syncing')) return 'syncing';
-    if (statuses.includes('offline')) return 'offline';
-    if (statuses.includes('error')) return 'error';
+    if (statuses.includes('offline') || statuses.includes('error')) return 'not_synced';
     return 'synced';
   }, [settingsSyncStatus, transactionsSyncStatus, inventorySyncStatus]);
 
@@ -186,7 +186,7 @@ const App: React.FC = () => {
     if (inventorySyncStatus !== 'synced') details.push(`Inventory: ${inventorySyncStatus}`);
     return details.length > 0 ? details.join(' | ') : 'All data synced';
   }, [settingsSyncStatus, transactionsSyncStatus, inventorySyncStatus]);
-  
+
   // Memoize page props to prevent unnecessary re-renders
   const pageProps = useMemo(() => ({
     transactions,
@@ -262,9 +262,10 @@ const App: React.FC = () => {
     }
   };
 
+  // Header: indicators always top-right, visible, with spacing
   const AppHeader: React.FC = () => (
-    <div className="flex items-center justify-between gap-4 p-4">
-      <div className="flex items-center gap-4">
+    <div className="flex items-center justify-between gap-4 p-4 sticky top-0 z-30 bg-card border-b border-border">
+      <div className="flex items-center gap-4 min-w-0">
           {settings.storeLogo ? (
               <img src={settings.storeLogo} alt="Store Logo" className="w-12 h-12 rounded-md object-cover flex-shrink-0 bg-secondary" />
           ) : (
@@ -272,12 +273,12 @@ const App: React.FC = () => {
                    <OlescoLogo className="w-full h-full p-1 opacity-50" />
               </div>
           )}
-          <div>
-              <p className="text-sm text-muted-foreground">Welcome to</p>
-              <h1 className="text-xl font-bold text-foreground">{settings.storeName}</h1>
+          <div className="truncate">
+              <p className="text-sm text-muted-foreground truncate">Welcome to</p>
+              <h1 className="text-xl font-bold text-foreground truncate">{settings.storeName}</h1>
           </div>
       </div>
-      <div className="flex-shrink-0 flex items-center gap-3">
+      <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3 ml-auto">
         <OnlineStatusIndicator />
         <SyncIndicator status={overallSyncStatus} details={syncDetails} />
       </div>
