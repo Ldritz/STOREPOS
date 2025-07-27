@@ -7,7 +7,7 @@ import { TrendingUpIcon, TrendingDownIcon, WalletIcon, WarningIcon } from './Ico
 
 // Chart Component (styling changes for dark theme)
 interface ChartData { name: string; income: number; expense: number; }
-const IncomeExpenseChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
+const IncomeExpenseChart: React.FC<{ data: ChartData[] }> = React.memo(({ data }) => {
   const formatYAxis = (tick: number) => `₱${tick.toLocaleString()}`;
   return (
     <div className="w-full h-72 md:h-80">
@@ -33,7 +33,7 @@ const IncomeExpenseChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
       </ResponsiveContainer>
     </div>
   );
-};
+});
 
 // Stat Card for the top row summary
 interface StatCardProps {
@@ -42,7 +42,7 @@ interface StatCardProps {
   Icon: React.ElementType;
   iconClass: string;
 }
-const StatCard: React.FC<StatCardProps> = ({ title, amount, Icon, iconClass }) => (
+const StatCard: React.FC<StatCardProps> = React.memo(({ title, amount, Icon, iconClass }) => (
     <div className="bg-card border border-border p-4 rounded-lg flex justify-between items-center">
         <div>
             <p className="text-sm text-muted-foreground font-medium">{title}</p>
@@ -54,15 +54,17 @@ const StatCard: React.FC<StatCardProps> = ({ title, amount, Icon, iconClass }) =
             <Icon className="w-8 h-8" />
         </div>
     </div>
-);
+));
 
 // Low Stock Alerts Card
 interface LowStockAlertsProps {
   inventory: InventoryItem[];
   onNavigate: (page: Page) => void;
 }
-const LowStockAlerts: React.FC<LowStockAlertsProps> = ({ inventory, onNavigate }) => {
-    const lowStockItems = inventory.filter(item => item.stock <= 5);
+const LowStockAlerts: React.FC<LowStockAlertsProps> = React.memo(({ inventory, onNavigate }) => {
+    const lowStockItems = useMemo(() => 
+        inventory.filter(item => item.stock <= 5), [inventory]
+    );
 
     return (
         <Card title="Low Stock Alerts" actions={
@@ -89,78 +91,60 @@ const LowStockAlerts: React.FC<LowStockAlertsProps> = ({ inventory, onNavigate }
             )}
         </Card>
     );
-};
+});
 
 // Top Products Chart
 interface TopProductsChartProps {
     data: { name: string; revenue: number }[];
 }
-const TopProductsChart: React.FC<TopProductsChartProps> = ({ data }) => {
+const TopProductsChart: React.FC<TopProductsChartProps> = React.memo(({ data }) => {
     const formatCurrency = (value: number) => `₱${value.toLocaleString()}`;
     return (
-        <Card title="Top 5 Products by Revenue">
-            <div className="w-full h-72">
-                {data.length > 0 ? (
-                    <ResponsiveContainer>
-                        <BarChart layout="vertical" data={data} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={formatCurrency} />
-                            <YAxis
-                                type="category"
-                                dataKey="name"
-                                stroke="hsl(var(--muted-foreground))"
-                                fontSize={12}
-                                width={100}
-                                tickFormatter={(value: string) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
-                                tick={{ textAnchor: 'end' }}
-                            />
-                            <Tooltip
-                                cursor={{ fill: 'hsl(var(--accent))' }}
-                                contentStyle={{
-                                    backgroundColor: 'hsl(var(--popover))',
-                                    borderColor: 'hsl(var(--border))',
-                                    borderRadius: '0.5rem',
-                                    color: 'hsl(var(--popover-foreground))'
-                                }}
-                                formatter={(value: number) => formatCurrency(value)}
-                            />
-                            <Bar dataKey="revenue" name="Revenue" fill="hsl(var(--info))" radius={[0, 4, 4, 0]} barSize={20} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                ) : (
-                    <div className="h-full flex items-center justify-center text-muted-foreground text-center">
-                        <div>
-                            <p className="font-semibold">No sales data available.</p>
-                            <p className="text-sm">Sell some products to see top performers!</p>
+        <Card title="Top Products by Revenue">
+            {data.length > 0 ? (
+                <div className="space-y-3">
+                    {data.map((product, index) => (
+                        <div key={product.name} className="flex items-center justify-between p-3 bg-secondary rounded-md">
+                            <div className="flex items-center gap-3">
+                                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                                    {index + 1}
+                                </div>
+                                <span className="font-medium text-foreground">{product.name}</span>
+                            </div>
+                            <span className="font-bold text-success">{formatCurrency(product.revenue)}</span>
                         </div>
-                    </div>
-                )}
-            </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center text-muted-foreground py-8">
+                    <p className="font-semibold">No product data available.</p>
+                    <p className="text-sm">Add some sales to see top products!</p>
+                </div>
+            )}
         </Card>
     );
-};
+});
 
-// Summary Row component for totals list
+// Summary Row Component
 interface SummaryRowProps {
     title: string;
     amount: number;
     Icon: React.ElementType;
     iconClass: string;
 }
-const SummaryRow: React.FC<SummaryRowProps> = ({ title, amount, Icon, iconClass }) => (
+const SummaryRow: React.FC<SummaryRowProps> = React.memo(({ title, amount, Icon, iconClass }) => (
     <div className="bg-card border border-border p-4 rounded-lg flex justify-between items-center">
-        <div>
-            <p className="text-sm text-muted-foreground font-medium uppercase">{title}</p>
-            <p className="text-2xl font-bold text-foreground mt-1">
-                {amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
-            </p>
-        </div>
-        <div className={`p-3 rounded-md ${iconClass}`}>
-            <Icon className="w-6 h-6" />
+        <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-md ${iconClass}`}>
+                <Icon className="w-5 h-5" />
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground font-medium">{title}</p>
+                <p className="text-xl font-bold text-foreground">{amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}</p>
+            </div>
         </div>
     </div>
-);
-
+));
 
 interface DashboardPageProps {
   transactions: Transaction[];
@@ -168,7 +152,7 @@ interface DashboardPageProps {
   onNavigate: (page: Page) => void;
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, inventory, onNavigate }) => {
+const DashboardPage: React.FC<DashboardPageProps> = React.memo(({ transactions, inventory, onNavigate }) => {
     const { 
         todaysIncome, todaysExpenses, 
         totalIncome, totalExpenses, 
@@ -262,6 +246,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, inventory, 
             </div>
         </div>
     );
-};
+});
 
 export default DashboardPage;

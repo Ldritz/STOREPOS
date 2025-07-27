@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import Card from './Card';
 import { InventoryItem } from '../types';
-import { PlusIcon, CloseIcon, EditIcon, TrashIcon, ImageIcon, UploadIcon } from './Icons';
+import { PlusIcon, EditIcon, TrashIcon, CloseIcon, SearchIcon } from './Icons';
 
-// Modal for Adding/Editing Inventory Items
+// Inventory Modal Component
 interface InventoryModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -12,39 +11,31 @@ interface InventoryModalProps {
     profitMarginDivisor: number;
 }
 
-const InventoryModal: React.FC<InventoryModalProps> = ({ isOpen, onClose, onSave, itemToEdit, profitMarginDivisor }) => {
+const InventoryModal: React.FC<InventoryModalProps> = React.memo(({ isOpen, onClose, onSave, itemToEdit, profitMarginDivisor }) => {
     const [name, setName] = useState('');
-    const [price, setPrice] = useState(''); // For direct edit
-    const [stock, setStock] = useState(''); // For direct edit
+    const [price, setPrice] = useState('');
+    const [stock, setStock] = useState('');
     const [unit, setUnit] = useState('pcs');
     const [category, setCategory] = useState('Feeds');
-    const [cost, setCost] = useState(''); // For direct edit (descriptive cost)
+    const [cost, setCost] = useState('');
     const [imageUrl, setImageUrl] = useState('');
-
-    // State for "Add Product" calculation
     const [batchCost, setBatchCost] = useState('');
     const [batchQuantity, setBatchQuantity] = useState('');
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const isAddMode = !itemToEdit;
 
     const calculatedPrice = useMemo(() => {
-        const costNum = parseFloat(batchCost);
-        const quantityNum = parseInt(batchQuantity, 10);
-        if (isAddMode && costNum > 0 && quantityNum > 0 && profitMarginDivisor > 0) {
-            const pricePerItem = costNum / quantityNum;
-            return Math.round(pricePerItem / profitMarginDivisor);
+        const batchCostNum = parseFloat(batchCost);
+        const batchQuantityNum = parseInt(batchQuantity, 10);
+        if (batchCostNum > 0 && batchQuantityNum > 0) {
+            return Math.round((batchCostNum / batchQuantityNum) / profitMarginDivisor);
         }
         return 0;
-    }, [batchCost, batchQuantity, isAddMode, profitMarginDivisor]);
+    }, [batchCost, batchQuantity, profitMarginDivisor]);
 
     const profitMarginPercentage = useMemo(() => {
-        if (profitMarginDivisor > 0 && profitMarginDivisor < 1) {
-            return ((1 - profitMarginDivisor) * 100).toFixed(1);
-        }
-        return 0;
+        return ((1 - profitMarginDivisor) * 100).toFixed(1);
     }, [profitMarginDivisor]);
-
 
     useEffect(() => {
         if (isOpen) {
@@ -142,99 +133,91 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ isOpen, onClose, onSave
                     </div>
                      <div className="grid grid-cols-2 gap-4">
                         <div>
-                           <label htmlFor="category" className={labelClass}>Category</label>
-                           <select id="category" value={category} onChange={e => setCategory(e.target.value)} className={selectClass}>
-                               <option>Feeds</option>
-                               <option>Non-Feeds</option>
-                           </select>
-                       </div>
+                            <label htmlFor="category" className={labelClass}>Category</label>
+                            <select id="category" value={category} onChange={e => setCategory(e.target.value)} className={selectClass}>
+                                <option value="Feeds">Feeds</option>
+                                <option value="Medicines">Medicines</option>
+                                <option value="Supplies">Supplies</option>
+                                <option value="Equipment">Equipment</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
                         <div>
-                           <label htmlFor="unit" className={labelClass}>Unit</label>
-                           <select id="unit" value={unit} onChange={e => setUnit(e.target.value)} required className={selectClass}>
-                               <option>kilo</option>
-                               <option>pcs</option>
-                               <option>pack</option>
-                               <option>bottle</option>
-                               <option>box</option>
-                               <option>sachet</option>
-                           </select>
-                       </div>
+                            <label htmlFor="unit" className={labelClass}>Unit</label>
+                            <select id="unit" value={unit} onChange={e => setUnit(e.target.value)} className={selectClass}>
+                                <option value="pcs">Pieces</option>
+                                <option value="kg">Kilograms</option>
+                                <option value="g">Grams</option>
+                                <option value="l">Liters</option>
+                                <option value="ml">Milliliters</option>
+                                <option value="box">Boxes</option>
+                                <option value="pack">Packs</option>
+                            </select>
+                        </div>
                     </div>
 
                     {isAddMode ? (
                         <>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label htmlFor="batchCost" className={labelClass}>Batch Cost</label>
-                                    <input type="number" id="batchCost" value={batchCost} onChange={e => setBatchCost(e.target.value)} required min="0" step="any" placeholder="e.g., 1000" className={inputClass}/>
+                                    <label htmlFor="batchCost" className={labelClass}>Batch Cost (₱)</label>
+                                    <input type="number" id="batchCost" value={batchCost} onChange={e => setBatchCost(e.target.value)} required placeholder="0.00" className={inputClass}/>
                                 </div>
                                 <div>
-                                    <label htmlFor="batchQuantity" className={labelClass}>Quantity in Batch</label>
-                                    <input type="number" id="batchQuantity" value={batchQuantity} onChange={e => setBatchQuantity(e.target.value)} required min="1" step="1" placeholder="e.g., 50" className={inputClass}/>
+                                    <label htmlFor="batchQuantity" className={labelClass}>Batch Quantity</label>
+                                    <input type="number" id="batchQuantity" value={batchQuantity} onChange={e => setBatchQuantity(e.target.value)} required placeholder="0" className={inputClass}/>
                                 </div>
                             </div>
+                            {calculatedPrice > 0 && (
+                                <div className="p-3 bg-secondary rounded-md">
+                                    <p className="text-sm text-secondary-foreground">
+                                        <span className="font-semibold">Calculated Price:</span> ₱{calculatedPrice.toLocaleString()} 
+                                        <span className="text-xs ml-2">({profitMarginPercentage}% profit margin)</span>
+                                    </p>
+                                </div>
+                            )}
                         </>
                     ) : (
-                         <>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                <label htmlFor="price" className={labelClass}>Price</label>
-                                <input type="number" id="price" value={price} onChange={e => setPrice(e.target.value)} required min="0" step="1" className={inputClass}/>
-                            </div>
-                                <div>
-                                <label htmlFor="stock" className={labelClass}>Stock Quantity</label>
-                                <input type="number" id="stock" value={stock} onChange={e => setStock(e.target.value)} required min="0" step="1" className={inputClass}/>
-                            </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="price" className={labelClass}>Price (₱)</label>
+                                <input type="number" id="price" value={price} onChange={e => setPrice(e.target.value)} required placeholder="0.00" className={inputClass}/>
                             </div>
                             <div>
-                               <label htmlFor="cost" className={labelClass}>Cost Details (Optional)</label>
-                               <input type="text" id="cost" value={cost} onChange={e => setCost(e.target.value)} placeholder="e.g. Cost: P543 / 12 pack" className={inputClass}/>
-                           </div>
-                         </>
+                                <label htmlFor="stock" className={labelClass}>Current Stock</label>
+                                <input type="number" id="stock" value={stock} onChange={e => setStock(e.target.value)} required placeholder="0" className={inputClass}/>
+                            </div>
+                        </div>
                     )}
 
                     <div>
-                        <label className={labelClass}>Product Image (Optional)</label>
-                        <div className="flex gap-4">
-                            <div className="w-24 h-24 flex-shrink-0 bg-secondary rounded-md flex items-center justify-center border border-border">
-                                {imageUrl ? (
-                                    <img src={imageUrl} alt="Product Preview" className="w-full h-full object-cover rounded-md" />
-                                ) : (
-                                    <ImageIcon className="w-10 h-10 text-muted-foreground" />
-                                )}
-                            </div>
-                            <div className="flex-1 space-y-2">
-                                <input type="text" value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="Paste image URL here" className={inputClass}/>
-                                <div className="text-center text-muted-foreground text-sm">OR</div>
-                                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden"/>
-                                <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-secondary border border-border rounded-md hover:bg-muted transition-colors">
-                                    <UploadIcon className="w-5 h-5" />
-                                    <span>Upload File</span>
-                                </button>
-                            </div>
-                        </div>
+                        <label htmlFor="cost" className={labelClass}>Cost Information (Optional)</label>
+                        <input type="text" id="cost" value={cost} onChange={e => setCost(e.target.value)} placeholder="e.g. Cost: ₱1,000 / 50 kg" className={inputClass}/>
                     </div>
-                    
-                    {isAddMode && (
-                        <div className="bg-secondary border border-border rounded-lg p-4 text-center">
-                            <p className="text-sm text-muted-foreground">Calculated Selling Price (per item)</p>
-                            <p className="text-3xl font-bold text-success my-1">
-                                {calculatedPrice > 0 ? calculatedPrice.toLocaleString('en-PH', {style: 'currency', currency: 'PHP', maximumFractionDigits: 0}) : '₱0'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Based on a ~{profitMarginPercentage}% profit margin.</p>
-                        </div>
-                    )}
 
-                    <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-secondary text-secondary-foreground font-bold py-2 px-6 rounded-lg hover:bg-muted transition-colors">Cancel</button>
-                        <button type="submit" className="bg-primary text-primary-foreground font-bold py-2 px-6 rounded-lg hover:bg-primary/90 transition-colors">Save Product</button>
+                    <div>
+                        <label htmlFor="image" className={labelClass}>Product Image (Optional)</label>
+                        <input type="file" id="image" accept="image/*" onChange={handleFileChange} className={inputClass}/>
+                        {imageUrl && (
+                            <div className="mt-2">
+                                <img src={imageUrl} alt="Product" className="w-20 h-20 object-cover rounded-md border border-border"/>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                        <button type="submit" className="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-md font-semibold hover:bg-primary/90 transition-colors">
+                            {isAddMode ? 'Add Product' : 'Update Product'}
+                        </button>
+                        <button type="button" onClick={onClose} className="flex-1 bg-secondary text-secondary-foreground py-2 px-4 rounded-md font-semibold hover:bg-secondary/80 transition-colors">
+                            Cancel
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     );
-};
-
+});
 
 // Inventory Item Card Component
 interface InventoryItemCardProps {
@@ -242,47 +225,53 @@ interface InventoryItemCardProps {
     onEdit: (item: InventoryItem) => void;
     onDelete: (id: string) => void;
 }
-const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, onEdit, onDelete }) => {
-    const isLowStock = item.stock <= 5;
-    const stockBadgeColor = isLowStock ? 'bg-destructive/20 text-destructive' : 'bg-success/20 text-success';
+
+const InventoryItemCard: React.FC<InventoryItemCardProps> = React.memo(({ item, onEdit, onDelete }) => {
+    const stockStatus = item.stock <= 5 ? 'low' : item.stock <= 20 ? 'medium' : 'good';
+    const stockColor = stockStatus === 'low' ? 'text-destructive' : stockStatus === 'medium' ? 'text-warning' : 'text-success';
 
     return (
-        <div className={`bg-card border border-border rounded-lg p-4 flex gap-4 relative transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${isLowStock ? 'ring-2 ring-destructive' : ''}`}>
-            {/* Image */}
-            <div className="w-24 h-24 flex-shrink-0">
-                {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover rounded-md bg-secondary" />
-                ) : (
-                    <div className="w-full h-full bg-secondary rounded-md flex items-center justify-center border border-border">
-                        <ImageIcon className="w-10 h-10 text-muted-foreground" />
+        <div className="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-foreground truncate">{item.name}</h3>
+                    <p className="text-sm text-muted-foreground">{item.category}</p>
+                </div>
+                <div className="flex items-center gap-2 ml-2">
+                    <button onClick={() => onEdit(item)} className="text-muted-foreground hover:text-foreground p-1">
+                        <EditIcon className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => onDelete(item.id)} className="text-muted-foreground hover:text-destructive p-1">
+                        <TrashIcon className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+            
+            {item.imageUrl && (
+                <div className="mb-3">
+                    <img src={item.imageUrl} alt={item.name} className="w-full h-32 object-cover rounded-md"/>
+                </div>
+            )}
+            
+            <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Price:</span>
+                    <span className="font-bold text-foreground">₱{item.price.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Stock:</span>
+                    <span className={`font-bold ${stockColor}`}>{item.stock} {item.unit}</span>
+                </div>
+                {item.cost && (
+                    <div className="text-xs text-muted-foreground border-t border-border pt-2">
+                        {item.cost}
                     </div>
                 )}
             </div>
-            {/* Details */}
-            <div className="flex-1">
-                <div className="flex items-baseline">
-                    <p className="text-lg font-bold text-card-foreground">{item.name}</p>
-                    {isLowStock && item.stock > 0 && <span className="text-xs font-bold uppercase text-warning ml-2">Low</span>}
-                </div>
-                <p className="text-xl font-bold text-success mt-1">
-                    {item.price.toLocaleString('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 })}
-                </p>
-                {item.cost && <p className="text-xs text-muted-foreground mt-1">{item.cost}</p>}
-
-                <div className={`mt-3 inline-block px-3 py-1 text-sm font-semibold rounded-full ${stockBadgeColor}`}>
-                    {item.stock > 0 ? `${item.stock} ${item.unit} in stock` : `Out of stock`}
-                </div>
-            </div>
-            {/* Actions */}
-            <div className="absolute bottom-4 right-4 flex gap-2">
-                <button onClick={() => onEdit(item)} className="p-2 rounded-full bg-secondary/50 text-muted-foreground hover:bg-info hover:text-info-foreground transition-colors"><EditIcon className="w-4 h-4"/></button>
-                <button onClick={() => onDelete(item.id)} className="p-2 rounded-full bg-secondary/50 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors"><TrashIcon className="w-4 h-4"/></button>
-            </div>
         </div>
     );
-};
+});
 
-// Main Inventory Page Component
 interface InventoryPageProps {
   inventory: InventoryItem[];
   onSaveItem: (item: InventoryItem | Omit<InventoryItem, 'id'>) => void;
@@ -290,9 +279,11 @@ interface InventoryPageProps {
   profitMarginDivisor: number;
 }
 
-const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onSaveItem, onDeleteItem, profitMarginDivisor }) => {
+const InventoryPage: React.FC<InventoryPageProps> = React.memo(({ inventory, onSaveItem, onDeleteItem, profitMarginDivisor }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [itemToEdit, setItemToEdit] = useState<InventoryItem | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
     const handleOpenModal = (item?: InventoryItem) => {
         setItemToEdit(item || null);
@@ -305,66 +296,118 @@ const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onSaveItem, on
     };
 
     const groupedInventory = useMemo(() => {
-        return inventory.reduce((acc, item) => {
-            const category = item.category || 'Non-Feeds'; // Default category
-            if (!acc[category]) {
-                acc[category] = [];
-            }
-            acc[category].push(item);
-            return acc;
-        }, {} as Record<string, InventoryItem[]>);
-    }, [inventory]);
-    
-    // Sort categories to have 'Feeds' first if it exists
-    const sortedCategories = Object.keys(groupedInventory).sort((a, b) => {
-        if (a === 'Feeds') return -1;
-        if (b === 'Feeds') return 1;
-        return a.localeCompare(b);
-    });
-    
-    return (
-        <div className="animate-fade-in space-y-6">
-             <div className="flex justify-end">
-                <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-primary text-primary-foreground font-bold py-2 px-4 rounded-lg hover:bg-primary/90 transition-colors">
-                    <PlusIcon className="w-5 h-5"/>
-                    <span>Add Item</span>
-                </button>
-             </div>
-             
-             {inventory.length > 0 ? (
-                sortedCategories.map(category => (
-                    <div key={category}>
-                        <h3 className="text-2xl font-bold text-foreground mb-4">{category}</h3>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {groupedInventory[category].map(item => (
-                                <InventoryItemCard 
-                                    key={item.id} 
-                                    item={item} 
-                                    onEdit={handleOpenModal} 
-                                    onDelete={onDeleteItem} 
-                                />
-                            ))}
-                        </div>
-                    </div>
-                ))
-             ) : (
-                <Card className="text-center py-16">
-                    <div className="text-muted-foreground">
-                        <p className="font-semibold text-lg">Your inventory is empty.</p>
-                        <p className="mt-2">Click "Add Item" to get started.</p>
-                    </div>
-                </Card>
-             )}
+        const filtered = inventory.filter(item => {
+            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+            return matchesSearch && matchesCategory;
+        });
 
-            <InventoryModal 
-              isOpen={isModalOpen} 
-              onClose={handleCloseModal} 
-              onSave={onSaveItem} 
-              itemToEdit={itemToEdit} 
-              profitMarginDivisor={profitMarginDivisor} 
+        const grouped: { [category: string]: InventoryItem[] } = {};
+        filtered.forEach(item => {
+            if (!grouped[item.category]) {
+                grouped[item.category] = [];
+            }
+            grouped[item.category].push(item);
+        });
+
+        return grouped;
+    }, [inventory, searchTerm, selectedCategory]);
+
+    const categories = useMemo(() => {
+        const cats = ['All', ...Array.from(new Set(inventory.map(item => item.category)))];
+        return cats.sort();
+    }, [inventory]);
+
+    const totalItems = inventory.length;
+    const lowStockItems = inventory.filter(item => item.stock <= 5).length;
+
+    return (
+        <div className="space-y-6 animate-fade-in">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold text-foreground">Inventory Management</h2>
+                    <p className="text-muted-foreground">Manage your products and stock levels</p>
+                </div>
+                <button
+                    onClick={() => handleOpenModal()}
+                    className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
+                >
+                    <PlusIcon className="w-5 h-5" />
+                    Add Product
+                </button>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-card border border-border p-4 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Total Products</p>
+                    <p className="text-2xl font-bold text-foreground">{totalItems}</p>
+                </div>
+                <div className="bg-card border border-border p-4 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Low Stock Items</p>
+                    <p className="text-2xl font-bold text-destructive">{lowStockItems}</p>
+                </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                    <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                        type="text"
+                        placeholder="Search products..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                </div>
+                <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                    {categories.map(category => (
+                        <option key={category} value={category}>{category}</option>
+                    ))}
+                </select>
+            </div>
+
+            {/* Inventory Grid */}
+            {Object.keys(groupedInventory).length > 0 ? (
+                <div className="space-y-6">
+                    {Object.entries(groupedInventory).map(([category, items]) => (
+                        <div key={category}>
+                            <h3 className="text-lg font-semibold text-foreground mb-4">{category} ({items.length})</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {items.map(item => (
+                                    <InventoryItemCard
+                                        key={item.id}
+                                        item={item}
+                                        onEdit={handleOpenModal}
+                                        onDelete={onDeleteItem}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                    <p className="font-semibold">No products found.</p>
+                    <p className="text-sm">Add some products to get started!</p>
+                </div>
+            )}
+
+            <InventoryModal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                onSave={onSaveItem}
+                itemToEdit={itemToEdit}
+                profitMarginDivisor={profitMarginDivisor}
             />
         </div>
     );
-};
+});
 
 export default InventoryPage;
