@@ -208,8 +208,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
     }, [transactions, filterType]);
 
     const groupedTransactions = useMemo(() => {
-        return transactions
-            .filter(t => filterType === 'ALL' || t.type === filterType)
+        const filtered = transactions
+            .filter(t => filterType === 'ALL' || t.type === filterType);
+        console.log('Filtered transactions for UI:', filtered);
+        return filtered
             .reduce((acc, t) => {
                 const dateStr = t.date.split('T')[0];
                 if (!acc[dateStr]) acc[dateStr] = [];
