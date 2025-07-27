@@ -294,11 +294,7 @@ const App: React.FC = () => {
             <span className="text-2xl font-extrabold text-foreground truncate leading-tight">{settings.storeName}</span>
           </div>
         </div>
-        {/* Right: Status Indicators */}
-        <div className="flex-shrink-0 flex items-center gap-2 md:gap-4 mt-2 md:mt-0">
-          <OnlineStatusIndicator />
-          <SyncIndicator status={overallSyncStatus} details={syncDetails} />
-        </div>
+        {/* Right: (Indicators removed) */}
       </div>
     </header>
   );
