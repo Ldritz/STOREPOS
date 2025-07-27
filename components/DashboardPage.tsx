@@ -3,6 +3,7 @@ import React, { useMemo, Suspense, lazy } from 'react';
 import Card from './Card';
 import { Transaction, TransactionType, InventoryItem, Page } from '../types';
 import { TrendingUpIcon, TrendingDownIcon, WalletIcon } from './Icons';
+import Skeleton from './Skeleton';
 
 // Correct lazy loading for each chart component
 const IncomeExpenseChart = lazy(() => import('./ChartComponents').then(m => ({ default: m.IncomeExpenseChart })));
@@ -11,10 +12,7 @@ const TopProductsChart = lazy(() => import('./ChartComponents').then(m => ({ def
 // Chart Loading Component
 const ChartLoading: React.FC = () => (
   <div className="w-full h-72 md:h-80 flex items-center justify-center">
-    <div className="text-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-      <p className="text-sm text-muted-foreground">Loading chart...</p>
-    </div>
+    <Skeleton className="w-full h-72 md:h-80" />
   </div>
 );
 
@@ -39,23 +37,21 @@ interface StatCardProps {
   trend?: number;
 }
 const StatCard: React.FC<StatCardProps> = ({ title, amount, Icon, iconClass, trend }) => (
-    <div className="bg-card border border-border p-4 rounded-lg hover:shadow-md transition-shadow">
-        <div className="flex justify-between items-start">
-            <div className="flex-1">
-                <p className="text-sm text-muted-foreground font-medium">{title}</p>
-                <p className="text-2xl lg:text-3xl font-bold text-foreground mt-1">
-                    {amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
-                </p>
-                {trend !== undefined && (
-                    <div className={`flex items-center gap-1 mt-1 text-xs font-medium ${trend >= 0 ? 'text-success' : 'text-destructive'}`}>
-                        <span>{trend >= 0 ? '↗' : '↘'}</span>
-                        <span>{Math.abs(trend)}%</span>
-                    </div>
-                )}
-            </div>
-            <div className={`p-3 rounded-md ${iconClass}`}>
-                <Icon className="w-8 h-8" />
-            </div>
+    <div className="bg-card border border-border p-4 rounded-lg hover:shadow-xl hover:-translate-y-1 transition-transform duration-200 flex justify-between items-start">
+        <div className="flex-1">
+            <p className="text-sm text-muted-foreground font-medium">{title}</p>
+            <p className="text-2xl lg:text-3xl font-bold text-foreground mt-1">
+                {amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
+            </p>
+            {trend !== undefined && (
+                <div className={`flex items-center gap-1 mt-1 text-xs font-medium ${trend >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    <span>{trend >= 0 ? '↗' : '↘'}</span>
+                    <span>{Math.abs(trend)}%</span>
+                </div>
+            )}
+        </div>
+        <div className={`p-3 rounded-md ${iconClass}`}> 
+            <Icon className="w-8 h-8" aria-label={title} />
         </div>
     </div>
 );
