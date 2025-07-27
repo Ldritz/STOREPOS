@@ -124,6 +124,7 @@ interface TransactionsPageProps {
 }
 
 const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDeleteTransaction }) => {
+    console.log('Transactions from Firestore:', transactions);
     const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
     const [viewMode, setViewMode] = useState<'list' | 'cashbook'>('cashbook');
 
