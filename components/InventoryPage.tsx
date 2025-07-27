@@ -177,7 +177,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = React.memo(({ item, 
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div>
           <span className="text-muted-foreground">Category:</span>
-          <span className="ml-1 text-foreground">{item.category}</span>
+          <span className="ml-1 text-foreground">{item.category || 'Uncategorized'}</span>
         </div>
         <div>
           <span className="text-muted-foreground">Unit:</span>
@@ -185,7 +185,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = React.memo(({ item, 
         </div>
         <div>
           <span className="text-muted-foreground">Cost:</span>
-          <span className="ml-1 text-foreground">₱{item.cost.toFixed(2)}</span>
+          <span className="ml-1 text-foreground">₱{(item.cost || 0).toFixed(2)}</span>
         </div>
         <div>
           <span className="text-muted-foreground">Price:</span>
@@ -218,15 +218,15 @@ const InventoryPage: React.FC<InventoryPageProps> = React.memo(({ inventory, onS
   const filteredInventory = useMemo(() => {
     return inventory.filter(item => {
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.category.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === '' || item.category === selectedCategory;
+                           (item.category || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === '' || (item.category || '') === selectedCategory;
       return matchesSearch && matchesCategory;
     });
   }, [inventory, searchTerm, selectedCategory]);
 
   const categories = useMemo(() => {
-    const uniqueCategories = [...new Set(inventory.map(item => item.category))];
-    return uniqueCategories.sort();
+    const uniqueCategories = [...new Set(inventory.map(item => item.category || ''))];
+    return uniqueCategories.filter(cat => cat !== '').sort();
   }, [inventory]);
 
   const totalProducts = inventory.length;

@@ -41,6 +41,6 @@ export interface InventoryItem {
   stock: number;
   unit: string; // e.g. pcs, Kilo, Pack
   category?: string;
-  cost?: string;
+  cost?: number;
   imageUrl?: string;
 }
