@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Card from './Card';
+import Skeleton from './Skeleton';
 import { InventoryItem } from '../types';
 import { PlusIcon, CloseIcon, EditIcon, TrashIcon, ImageIcon, UploadIcon, SearchIcon, FilterIcon } from './Icons';
 
@@ -247,7 +248,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, onEdit, onD
     const stockBadgeColor = isOutOfStock ? 'bg-destructive/20 text-destructive' : isLowStock ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success';
 
     return (
-        <div className={`bg-card border border-border rounded-xl p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group ${isLowStock ? 'ring-2 ring-warning' : ''} ${isOutOfStock ? 'ring-2 ring-destructive' : ''}`}>
+        <div className={`bg-card border border-border rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group ${isLowStock ? 'ring-2 ring-warning' : ''} ${isOutOfStock ? 'ring-2 ring-destructive' : ''}`}>
             {/* Image Section */}
             <div className="relative mb-4">
                 <div className="w-full h-48 rounded-lg overflow-hidden bg-secondary">
@@ -267,11 +268,11 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, onEdit, onD
                 
                 {/* Action Buttons */}
                 <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                    <button onClick={() => onEdit(item)} className="p-2 rounded-full bg-background/80 backdrop-blur-sm text-foreground hover:bg-info hover:text-info-foreground transition-colors">
-                        <EditIcon className="w-4 h-4"/>
+                    <button aria-label="Edit item" onClick={() => onEdit(item)} className="p-2 rounded-full bg-background/80 backdrop-blur-sm text-foreground hover:bg-info hover:text-info-foreground focus:ring-2 focus:ring-info focus:outline-none transition-colors" style={{ minWidth: 44, minHeight: 44 }}>
+                        <EditIcon className="w-4 h-4" />
                     </button>
-                    <button onClick={() => onDelete(item.id)} className="p-2 rounded-full bg-background/80 backdrop-blur-sm text-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors">
-                        <TrashIcon className="w-4 h-4"/>
+                    <button aria-label="Delete item" onClick={() => onDelete(item.id)} className="p-2 rounded-full bg-background/80 backdrop-blur-sm text-foreground hover:bg-destructive hover:text-destructive-foreground focus:ring-2 focus:ring-destructive focus:outline-none transition-colors" style={{ minWidth: 44, minHeight: 44 }}>
+                        <TrashIcon className="w-4 h-4" />
                     </button>
                 </div>
             </div>
@@ -336,6 +337,11 @@ const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onSaveItem, on
     const [itemToEdit, setItemToEdit] = useState<InventoryItem | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('ALL');
+    const [loading, setLoading] = useState(false); // Simulate loading for skeleton
+
+    useEffect(() => {
+      setLoading(inventory.length === 0);
+    }, [inventory]);
 
     const handleOpenModal = (item?: InventoryItem) => {
         setItemToEdit(item || null);
@@ -462,7 +468,13 @@ const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onSaveItem, on
             </div>
              
             {/* Inventory Grid */}
-            {filteredInventory.length > 0 ? (
+            {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <Skeleton key={i} className="h-64 w-full" />
+                  ))}
+                </div>
+            ) : filteredInventory.length > 0 ? (
                 sortedCategories.map(category => (
                     <div key={category} className="space-y-4">
                         <div className="flex items-center gap-3">
