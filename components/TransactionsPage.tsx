@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, InventoryItem } from '../types';
 import { TrashIcon, ChevronDownIcon, ListBulletIcon, TableCellsIcon } from './Icons';
+import Skeleton from './Skeleton';
 
 const formatCurrency = (amount: number, abs = false) => {
     const value = abs ? Math.abs(amount) : amount;
@@ -127,6 +128,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
     console.log('Transactions from Firestore:', transactions);
     const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
     const [viewMode, setViewMode] = useState<'list' | 'cashbook'>('cashbook');
+    const [loading, setLoading] = useState(false); // Simulate loading for skeleton
+
+    React.useEffect(() => {
+      setLoading(transactions.length === 0);
+    }, [transactions]);
 
     const { incomeStats, expenseStats } = useMemo(() => {
         const now = new Date();
@@ -266,7 +272,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
 
             {viewMode === 'list' ? (
                  <div className="space-y-6 animate-fade-in">
-                    {sortedDateKeys.length > 0 ? sortedDateKeys.map(dateKey => {
+                    {loading ? (
+                      <div className="space-y-4">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <Skeleton key={i} className="h-32 w-full" />
+                        ))}
+                      </div>
+                    ) : sortedDateKeys.length > 0 ? sortedDateKeys.map(dateKey => {
                         const dailyTransactions = groupedTransactions[dateKey];
                         const dailyIncome = dailyTransactions.filter(t => t.type === TransactionType.Income).reduce((sum, t) => sum + t.amount, 0);
                         const dailyExpenses = dailyTransactions.filter(t => t.type === TransactionType.Expense).reduce((sum, t) => sum + t.amount, 0);
@@ -288,7 +300,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
                                 
                                 <div className="space-y-2">
                                     {dailyTransactions.map(t => (
-                                        <div key={t.id} className="bg-card border border-border p-4 rounded-lg flex justify-between items-center group">
+                                        <div key={t.id} className="bg-card border border-border p-4 rounded-lg flex justify-between items-center group hover:shadow-xl hover:-translate-y-1 transition-transform duration-200" style={{ minHeight: 44 }}>
                                             <div className="flex-1 min-w-0 pr-4">
                                                  <p className="font-bold text-foreground truncate">{t.description}</p>
                                                  <p className="text-sm text-muted-foreground">{new Date(t.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>
@@ -307,8 +319,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
                                                 ) : (
                                                     <p className="font-bold text-lg text-warning">{formatCurrency(t.amount)}</p>
                                                 )}
-                                                <button onClick={() => onDeleteTransaction(t)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100">
-                                                    <TrashIcon className="w-5 h-5"/>
+                                                <button aria-label="Delete transaction" onClick={() => onDeleteTransaction(t)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:ring-2 focus:ring-destructive focus:outline-none rounded-full" style={{ minWidth: 44, minHeight: 44 }}>
+                                                    <TrashIcon className="w-5 h-5" />
                                                 </button>
                                             </div>
                                         </div>
