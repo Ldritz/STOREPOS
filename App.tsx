@@ -264,8 +264,8 @@ const App: React.FC = () => {
 
   // Header: indicators always top-right, visible, with spacing
   const AppHeader: React.FC = () => (
-    <div className="flex items-center justify-between gap-4 p-4 sticky top-0 z-30 bg-card border-b border-border">
-      <div className="flex items-center gap-4 min-w-0">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 p-4 sticky top-0 z-30 bg-card border-b border-border">
+      <div className="flex items-center gap-4 min-w-0 flex-1">
           {settings.storeLogo ? (
               <img src={settings.storeLogo} alt="Store Logo" className="w-12 h-12 rounded-md object-cover flex-shrink-0 bg-secondary" />
           ) : (
@@ -273,12 +273,12 @@ const App: React.FC = () => {
                    <OlescoLogo className="w-full h-full p-1 opacity-50" />
               </div>
           )}
-          <div className="truncate">
+          <div className="truncate min-w-0">
               <p className="text-sm text-muted-foreground truncate">Welcome to</p>
               <h1 className="text-xl font-bold text-foreground truncate">{settings.storeName}</h1>
           </div>
       </div>
-      <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3 ml-auto">
+      <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3 mt-2 sm:mt-0">
         <OnlineStatusIndicator />
         <SyncIndicator status={overallSyncStatus} details={syncDetails} />
       </div>
