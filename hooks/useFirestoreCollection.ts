@@ -74,24 +74,30 @@ function useFirestoreCollection<T extends { id: string }>(
             if (collectionName === 'transactions') {
                 const validation = validateTransaction(item as any);
                 if (!validation.isValid) {
+                    console.error('Validation failed:', validation.errors);
                     throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
                 }
             } else if (collectionName === 'inventory') {
                 const validation = validateInventoryItem(item as any);
                 if (!validation.isValid) {
+                    console.error('Validation failed:', validation.errors);
                     throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
                 }
             }
 
-            return await retryOperation(
+            console.log('Attempting to add to Firestore:', collectionName, item);
+            const docId = await retryOperation(
                 async () => {
                     const docRef = await addDoc(collection(db, collectionName), item);
                     return docRef.id;
                 },
                 { operation: `${collectionName}_add` }
             );
+            console.log('Successfully added to Firestore:', collectionName, docId);
+            return docId;
         } catch (e) {
             const error = e as Error;
+            console.error('Error adding to Firestore:', collectionName, error);
             handleFirebaseError(error, `${collectionName}_add`);
             throw error;
         }
