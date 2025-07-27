@@ -7,55 +7,16 @@ import BottomNav from './components/BottomNav';
 import SyncStatusIndicator from './components/SyncStatusIndicator';
 import { ShoppingCartIcon, DashboardIcon, TransactionsIcon, InventoryIcon, OlescoLogo, SettingsIcon } from './components/Icons';
 import { usePerformanceMonitor } from './utils/performance';
+import { useRUM } from './utils/rum';
+import { useErrorHandler } from './utils/errorHandling';
+import { ErrorBoundary } from './utils/errorHandling';
+import { validateTransaction } from './utils/validation';
 
 // Lazy load page components for better performance
 const DashboardPage = lazy(() => import('./components/DashboardPage'));
 const TransactionsPage = lazy(() => import('./components/TransactionsPage'));
 const InventoryPage = lazy(() => import('./components/InventoryPage'));
 const SettingsPage = lazy(() => import('./components/SettingsPage'));
-
-// Error Boundary Component
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error?: Error;
-}
-
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex items-center justify-center min-h-[400px] p-8">
-          <div className="text-center">
-            <div className="text-6xl mb-4">⚠️</div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Something went wrong</h2>
-            <p className="text-muted-foreground mb-4">The page encountered an error while loading.</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-            >
-              Reload Page
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
 
 // Loading Component
 const PageLoading: React.FC = () => (
@@ -70,7 +31,11 @@ const PageLoading: React.FC = () => (
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Dashboard);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Performance and monitoring hooks
   const { measureAsync } = usePerformanceMonitor();
+  const { trackPageLoad, trackUserAction, trackTransactionTime } = useRUM();
+  const { handleError, retryOperation } = useErrorHandler();
 
   const { data: settings, updateData: updateSettings, syncStatus: settingsSyncStatus } = useFirestoreDoc<AppSettings>('config', 'settings', {
     storeName: 'Olesco Agrivet Trading',
@@ -79,8 +44,13 @@ const App: React.FC = () => {
     theme: 'dark',
   });
 
-  const { data: transactions, addItem: addTransaction, deleteItem: deleteTransaction, syncStatus: transactionsSyncStatus } = useFirestoreCollection<Transaction>('transactions', 'date', 'desc');
-  const { data: inventory, addItem: addInventoryItem, updateItem: updateInventoryItem, deleteItem: deleteInventoryItem, updateMultipleItems: updateMultipleInventoryItems, syncStatus: inventorySyncStatus } = useFirestoreCollection<InventoryItem>('inventory', 'name', 'asc');
+  const { data: transactions, addItem: addTransaction, deleteItem: deleteTransaction, syncStatus: transactionsSyncStatus, retrySync: retryTransactionsSync } = useFirestoreCollection<Transaction>('transactions', 'date', 'desc');
+  const { data: inventory, addItem: addInventoryItem, updateItem: updateInventoryItem, deleteItem: deleteInventoryItem, updateMultipleItems: updateMultipleInventoryItems, syncStatus: inventorySyncStatus, retrySync: retryInventorySync } = useFirestoreCollection<InventoryItem>('inventory', 'name', 'asc');
+
+  // Track page loads
+  useEffect(() => {
+    trackPageLoad(currentPage);
+  }, [currentPage, trackPageLoad]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -88,58 +58,117 @@ const App: React.FC = () => {
     root.classList.add(settings.theme);
   }, [settings.theme]);
 
+  // Enhanced transaction handling with validation and performance tracking
   const handleAddTransaction = useCallback(async (transactionData: Omit<Transaction, 'id'>) => {
-    await measureAsync('add-transaction', async () => {
-      await addTransaction(transactionData);
-      
-      // For income, decrease stock of sold items based on quantity.
-      if (transactionData.type === TransactionType.Income && transactionData.items) {
-          const stockUpdates = transactionData.items.map(soldItem => {
-              const invItem = inventory.find(i => i.id === soldItem.inventoryItemId);
-              if (invItem) {
-                  return {
-                      id: invItem.id,
-                      data: { stock: Math.max(0, invItem.stock - soldItem.quantity) }
-                  };
-              }
-              return null;
-          }).filter((i): i is { id: string; data: { stock: number } } => i !== null);
-          
-          if(stockUpdates.length > 0) {
-              await updateMultipleInventoryItems(stockUpdates);
-          }
+    const startTime = performance.now();
+    
+    try {
+      // Validate transaction data
+      const validation = validateTransaction(transactionData);
+      if (!validation.isValid) {
+        throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
       }
-    });
-  }, [addTransaction, inventory, updateMultipleInventoryItems, measureAsync]);
 
-  const handleDeleteTransaction = async (transaction: Transaction) => {
+      await measureAsync('add-transaction', async () => {
+        await addTransaction(validation.sanitizedData);
+        
+        // For income, decrease stock of sold items based on quantity.
+        if (transactionData.type === TransactionType.Income && transactionData.items) {
+            const stockUpdates = transactionData.items.map(soldItem => {
+                const invItem = inventory.find(i => i.id === soldItem.inventoryItemId);
+                if (invItem) {
+                    return {
+                        id: invItem.id,
+                        data: { stock: Math.max(0, invItem.stock - soldItem.quantity) }
+                    };
+                }
+                return null;
+            }).filter((i): i is { id: string; data: { stock: number } } => i !== null);
+            
+            if(stockUpdates.length > 0) {
+                await updateMultipleInventoryItems(stockUpdates);
+            }
+        }
+      });
+
+      // Track successful transaction
+      trackTransactionTime(startTime, transactionData.type);
+      trackUserAction('transaction_added', { type: transactionData.type, amount: transactionData.amount });
+      
+    } catch (error) {
+      const err = error as Error;
+      handleError(err, { operation: 'add_transaction', data: transactionData });
+      throw err;
+    }
+  }, [addTransaction, inventory, updateMultipleInventoryItems, measureAsync, trackTransactionTime, trackUserAction, handleError]);
+
+  const handleDeleteTransaction = useCallback(async (transaction: Transaction) => {
     if(window.confirm('Are you sure you want to delete this transaction? This action will not restock items.')) {
-        await deleteTransaction(transaction.id);
+      try {
+        await retryOperation(
+          async () => await deleteTransaction(transaction.id),
+          { operation: 'delete_transaction' }
+        );
+        trackUserAction('transaction_deleted', { type: transaction.type, amount: transaction.amount });
+      } catch (error) {
+        const err = error as Error;
+        handleError(err, { operation: 'delete_transaction', data: transaction });
+        throw err;
+      }
     }
-  };
+  }, [deleteTransaction, retryOperation, trackUserAction, handleError]);
 
-  const handleSaveInventoryItem = async (itemData: InventoryItem | Omit<InventoryItem, 'id'>) => {
-    if ('id' in itemData) {
-      const { id, ...dataToUpdate } = itemData;
-      await updateInventoryItem(id, dataToUpdate);
-    } else {
-      await addInventoryItem(itemData);
+  const handleSaveInventoryItem = useCallback(async (itemData: InventoryItem | Omit<InventoryItem, 'id'>) => {
+    try {
+      if ('id' in itemData) {
+        const { id, ...dataToUpdate } = itemData;
+        await updateInventoryItem(id, dataToUpdate);
+        trackUserAction('inventory_item_updated', { itemId: id });
+      } else {
+        await addInventoryItem(itemData);
+        trackUserAction('inventory_item_added', { itemName: itemData.name });
+      }
+    } catch (error) {
+      const err = error as Error;
+      handleError(err, { operation: 'save_inventory_item', data: itemData });
+      throw err;
     }
-  };
+  }, [addInventoryItem, updateInventoryItem, trackUserAction, handleError]);
 
-  const handleDeleteInventoryItem = async (id: string) => {
+  const handleDeleteInventoryItem = useCallback(async (id: string) => {
      if(window.confirm('Are you sure you want to delete this item? This cannot be undone.')) {
-        await deleteInventoryItem(id);
+        try {
+          await retryOperation(
+            async () => await deleteInventoryItem(id),
+            { operation: 'delete_inventory_item' }
+          );
+          trackUserAction('inventory_item_deleted', { itemId: id });
+        } catch (error) {
+          const err = error as Error;
+          handleError(err, { operation: 'delete_inventory_item', data: { id } });
+          throw err;
+        }
      }
-  };
+  }, [deleteInventoryItem, retryOperation, trackUserAction, handleError]);
 
-  const handleSaveSettings = async (newSettings: Partial<AppSettings>) => {
-    await updateSettings(newSettings as AppSettings);
-  };
+  const handleSaveSettings = useCallback(async (newSettings: Partial<AppSettings>) => {
+    try {
+      await retryOperation(
+        async () => await updateSettings(newSettings as AppSettings),
+        { operation: 'save_settings' }
+      );
+      trackUserAction('settings_updated', { settings: Object.keys(newSettings) });
+    } catch (error) {
+      const err = error as Error;
+      handleError(err, { operation: 'save_settings', data: newSettings });
+      throw err;
+    }
+  }, [updateSettings, retryOperation, trackUserAction, handleError]);
   
-  const setTheme = (theme: 'light' | 'dark') => {
+  const setTheme = useCallback((theme: 'light' | 'dark') => {
     updateSettings({ theme });
-  };
+    trackUserAction('theme_changed', { theme });
+  }, [updateSettings, trackUserAction]);
 
   const overallSyncStatus = useMemo((): SyncStatus => {
     const statuses = [settingsSyncStatus, transactionsSyncStatus, inventorySyncStatus];
@@ -179,7 +208,6 @@ const App: React.FC = () => {
   };
 
   const renderPage = () => {
-
     switch (currentPage) {
       case Page.Dashboard:
         return (
@@ -259,7 +287,10 @@ const App: React.FC = () => {
             ].map(item => (
                 <button 
                     key={item.page}
-                    onClick={() => setCurrentPage(item.page)}
+                    onClick={() => {
+                      setCurrentPage(item.page);
+                      trackUserAction('navigation', { page: item.page });
+                    }}
                     className={`flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${currentPage === item.page ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
                 >
                     {item.icon}
@@ -291,7 +322,10 @@ const App: React.FC = () => {
         </div>
             
         <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setIsModalOpen(true);
+              trackUserAction('add_transaction_button_clicked');
+            }}
             className="fixed bottom-20 right-4 md:bottom-8 md:right-8 w-16 h-16 bg-primary rounded-full text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-transform transform hover:scale-110 z-40"
             aria-label="Add Transaction"
         >
@@ -300,7 +334,10 @@ const App: React.FC = () => {
         
         <AddTransactionModal 
             isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
+            onClose={() => {
+              setIsModalOpen(false);
+              trackUserAction('add_transaction_modal_closed');
+            }}
             onAddTransaction={handleAddTransaction}
             inventory={inventory}
         />

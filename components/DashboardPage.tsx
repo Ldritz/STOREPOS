@@ -1,39 +1,30 @@
 
-import React, { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import React, { useMemo, Suspense, lazy } from 'react';
 import Card from './Card';
 import { Transaction, TransactionType, InventoryItem, Page } from '../types';
 import { TrendingUpIcon, TrendingDownIcon, WalletIcon } from './Icons';
 
+// Dynamic imports for recharts components to reduce bundle size
+const ChartComponents = lazy(() => import('./ChartComponents'));
 
+// Chart Loading Component
+const ChartLoading: React.FC = () => (
+  <div className="w-full h-72 md:h-80 flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+      <p className="text-sm text-muted-foreground">Loading chart...</p>
+    </div>
+  </div>
+);
 
 // Chart Component (styling changes for dark theme)
 interface ChartData { name: string; income: number; expense: number; }
 const IncomeExpenseChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
-  const formatYAxis = (tick: number) => `₱${tick.toLocaleString()}`;
-  
   return (
     <div className="w-full h-72 md:h-80">
-      <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={formatYAxis} />
-          <Tooltip
-            cursor={{ fill: 'hsl(var(--accent))' }}
-            contentStyle={{
-              backgroundColor: 'hsl(var(--popover))',
-              borderColor: 'hsl(var(--border))',
-              borderRadius: '0.5rem',
-              color: 'hsl(var(--popover-foreground))'
-            }}
-             labelStyle={{ fontWeight: 'bold' }}
-          />
-          <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }}/>
-          <Bar dataKey="income" fill="hsl(var(--success))" name="Income" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="expense" fill="hsl(var(--warning))" name="Expense" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+      <Suspense fallback={<ChartLoading />}>
+        <ChartComponents.IncomeExpenseChart data={data} />
+      </Suspense>
     </div>
   );
 };
@@ -99,47 +90,12 @@ interface TopProductsChartProps {
     data: { name: string; revenue: number }[];
 }
 const TopProductsChart: React.FC<TopProductsChartProps> = ({ data }) => {
-    const formatCurrency = (value: number) => `₱${value.toLocaleString()}`;
     return (
-        <Card title="Top 5 Products by Revenue">
-            <div className="w-full h-72">
-                {data.length > 0 ? (
-                    <ResponsiveContainer>
-                        <BarChart layout="vertical" data={data} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={formatCurrency} />
-                            <YAxis
-                                type="category"
-                                dataKey="name"
-                                stroke="hsl(var(--muted-foreground))"
-                                fontSize={12}
-                                width={100}
-                                tickFormatter={(value: string) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
-                                tick={{ textAnchor: 'end' }}
-                            />
-                            <Tooltip
-                                cursor={{ fill: 'hsl(var(--accent))' }}
-                                contentStyle={{
-                                    backgroundColor: 'hsl(var(--popover))',
-                                    borderColor: 'hsl(var(--border))',
-                                    borderRadius: '0.5rem',
-                                    color: 'hsl(var(--popover-foreground))'
-                                }}
-                                formatter={(value: number) => formatCurrency(value)}
-                            />
-                            <Bar dataKey="revenue" name="Revenue" fill="hsl(var(--info))" radius={[0, 4, 4, 0]} barSize={20} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                ) : (
-                    <div className="h-full flex items-center justify-center text-muted-foreground text-center">
-                        <div>
-                            <p className="font-semibold">No sales data available.</p>
-                            <p className="text-sm">Sell some products to see top performers!</p>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </Card>
+        <div className="w-full h-72 md:h-80">
+            <Suspense fallback={<ChartLoading />}>
+                <ChartComponents.TopProductsChart data={data} />
+            </Suspense>
+        </div>
     );
 };
 
