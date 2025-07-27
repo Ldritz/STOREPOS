@@ -68,6 +68,20 @@ function useFirestoreCollection<T extends { id: string }>(
         return () => unsubscribe();
     }, [collectionName, defaultSortField, defaultSortDirection, JSON.stringify(queries)]);
 
+    // Utility to remove undefined fields deeply
+    function removeUndefinedFieldsDeep(obj: any): any {
+        if (Array.isArray(obj)) {
+            return obj.map(removeUndefinedFieldsDeep);
+        } else if (obj && typeof obj === 'object') {
+            return Object.fromEntries(
+                Object.entries(obj)
+                    .filter(([_, v]) => v !== undefined)
+                    .map(([k, v]) => [k, removeUndefinedFieldsDeep(v)])
+            );
+        }
+        return obj;
+    }
+
     const addItem = useCallback(async (item: Omit<T, 'id'>) => {
         try {
             // Validate data based on collection type
@@ -85,10 +99,11 @@ function useFirestoreCollection<T extends { id: string }>(
                 }
             }
 
-            console.log('Attempting to add to Firestore:', collectionName, item);
+            const cleanedItem = removeUndefinedFieldsDeep(item);
+            console.log('Attempting to add to Firestore:', collectionName, cleanedItem);
             const docId = await retryOperation(
                 async () => {
-                    const docRef = await addDoc(collection(db, collectionName), item);
+                    const docRef = await addDoc(collection(db, collectionName), cleanedItem);
                     return docRef.id;
                 },
                 { operation: `${collectionName}_add` }
