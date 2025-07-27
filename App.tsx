@@ -12,6 +12,7 @@ import { useRUM } from './utils/rum';
 import { useErrorHandler } from './utils/errorHandling';
 import { ErrorBoundary } from './utils/errorHandling';
 import { validateTransaction } from './utils/validation';
+import StatusToasts from './components/StatusToasts';
 
 // Lazy load page components for better performance
 const DashboardPage = lazy(() => import('./components/DashboardPage'));
@@ -58,6 +59,19 @@ const App: React.FC = () => {
     root.classList.remove('light', 'dark');
     root.classList.add(settings.theme);
   }, [settings.theme]);
+
+  // Online status state
+  const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  useEffect(() => {
+    const handleOnline = () => setOnline(true);
+    const handleOffline = () => setOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Enhanced transaction handling with validation and performance tracking
   const handleAddTransaction = useCallback(async (transactionData: Omit<Transaction, 'id'>) => {
@@ -319,12 +333,13 @@ const App: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-background">
-        <SideNav />
-        <div className="flex-1 flex flex-col max-w-full overflow-hidden">
-          {/* Mobile Header */}
-          <div className="md:hidden border-b border-border bg-card">
-              <AppHeader />
-          </div>
+      <StatusToasts syncStatus={overallSyncStatus} online={online} />
+      <SideNav />
+      <div className="flex-1 flex flex-col max-w-full overflow-hidden">
+        {/* Mobile Header */}
+        <div className="md:hidden border-b border-border bg-card">
+            <AppHeader />
+        </div>
 
           <main className="flex-1 p-4 md:p-8 pb-20 md:pb-8 overflow-y-auto">
               <div className="mb-6">
