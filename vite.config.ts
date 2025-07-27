@@ -21,8 +21,6 @@ export default defineConfig(({ mode }) => {
               vendor: ['react', 'react-dom'],
               // Separate recharts as it's a large library
               charts: ['recharts'],
-              // Separate Firebase as it's used across the app
-              firebase: ['firebase'],
             },
             // Optimize chunk naming
             chunkFileNames: () => `js/[name]-[hash].js`,
@@ -35,12 +33,9 @@ export default defineConfig(({ mode }) => {
         // Optimize chunk size warnings
         chunkSizeWarningLimit: 1000,
         // Enable minification
-        minify: 'terser',
-        terserOptions: {
-          compress: {
-            drop_console: mode === 'production',
-            drop_debugger: mode === 'production'
-          }
+        minify: 'esbuild',
+        esbuild: {
+          drop: mode === 'production' ? ['console', 'debugger'] : []
         }
       },
       // Optimize development server
