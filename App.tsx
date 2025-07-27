@@ -294,7 +294,6 @@ const App: React.FC = () => {
             <span className="text-2xl font-extrabold text-foreground truncate leading-tight">{settings.storeName}</span>
           </div>
         </div>
-        {/* Right: (Indicators removed) */}
       </div>
     </header>
   );
