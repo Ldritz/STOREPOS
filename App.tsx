@@ -4,7 +4,8 @@ import useFirestoreDoc from './hooks/useFirestoreDoc';
 import { Page, Transaction, InventoryItem, TransactionType, AppSettings, SyncStatus } from './types';
 import AddTransactionModal from './components/AddTransactionModal';
 import BottomNav from './components/BottomNav';
-import SyncStatusIndicator from './components/SyncStatusIndicator';
+import SyncIndicator from './components/SyncIndicator';
+import OnlineStatusIndicator from './components/OnlineStatusIndicator';
 import { ShoppingCartIcon, DashboardIcon, TransactionsIcon, InventoryIcon, OlescoLogo, SettingsIcon } from './components/Icons';
 import { usePerformanceMonitor } from './utils/performance';
 import { useRUM } from './utils/rum';
@@ -276,8 +277,9 @@ const App: React.FC = () => {
               <h1 className="text-xl font-bold text-foreground">{settings.storeName}</h1>
           </div>
       </div>
-      <div className="flex-shrink-0">
-        <SyncStatusIndicator status={overallSyncStatus} details={syncDetails} />
+      <div className="flex-shrink-0 flex items-center gap-3">
+        <OnlineStatusIndicator />
+        <SyncIndicator status={overallSyncStatus} details={syncDetails} />
       </div>
     </div>
   );
