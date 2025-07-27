@@ -299,7 +299,10 @@ export function createPerformanceObserver(
 ): PerformanceObserver | null {
   if ('PerformanceObserver' in window) {
     try {
-      const observer = new PerformanceObserver(callback);
+      const observer = new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        callback(entries);
+      });
       observer.observe({ entryTypes });
       return observer;
     } catch (error) {

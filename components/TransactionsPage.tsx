@@ -125,7 +125,7 @@ interface TransactionsPageProps {
 
 const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDeleteTransaction }) => {
     const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
-    const [viewMode, setViewMode] = useState<'list' | 'cashbook'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'cashbook'>('cashbook');
 
     const { incomeStats, expenseStats } = useMemo(() => {
         const now = new Date();

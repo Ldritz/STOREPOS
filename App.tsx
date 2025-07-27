@@ -44,8 +44,8 @@ const App: React.FC = () => {
     theme: 'dark',
   });
 
-  const { data: transactions, addItem: addTransaction, deleteItem: deleteTransaction, syncStatus: transactionsSyncStatus, retrySync: retryTransactionsSync } = useFirestoreCollection<Transaction>('transactions', 'date', 'desc');
-  const { data: inventory, addItem: addInventoryItem, updateItem: updateInventoryItem, deleteItem: deleteInventoryItem, updateMultipleItems: updateMultipleInventoryItems, syncStatus: inventorySyncStatus, retrySync: retryInventorySync } = useFirestoreCollection<InventoryItem>('inventory', 'name', 'asc');
+  const { data: transactions, addItem: addTransaction, deleteItem: deleteTransaction, syncStatus: transactionsSyncStatus } = useFirestoreCollection<Transaction>('transactions', 'date', 'desc');
+  const { data: inventory, addItem: addInventoryItem, updateItem: updateInventoryItem, deleteItem: deleteInventoryItem, updateMultipleItems: updateMultipleInventoryItems, syncStatus: inventorySyncStatus } = useFirestoreCollection<InventoryItem>('inventory', 'name', 'asc');
 
   // Track page loads
   useEffect(() => {

@@ -199,7 +199,6 @@ export class ErrorHandler {
 // React Hook for Error Handling
 export function useErrorHandler() {
   const errorHandler = ErrorHandler.getInstance();
-  const { trackError } = useRUM();
 
   return {
     handleError: (error: Error, context: Omit<ErrorContext, 'timestamp'>) => {
