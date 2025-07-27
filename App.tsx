@@ -174,7 +174,16 @@ const App: React.FC = () => {
     const statuses = [settingsSyncStatus, transactionsSyncStatus, inventorySyncStatus];
     if (statuses.includes('syncing')) return 'syncing';
     if (statuses.includes('offline')) return 'offline';
+    if (statuses.includes('error')) return 'error';
     return 'synced';
+  }, [settingsSyncStatus, transactionsSyncStatus, inventorySyncStatus]);
+
+  const syncDetails = useMemo(() => {
+    const details: string[] = [];
+    if (settingsSyncStatus !== 'synced') details.push(`Settings: ${settingsSyncStatus}`);
+    if (transactionsSyncStatus !== 'synced') details.push(`Transactions: ${transactionsSyncStatus}`);
+    if (inventorySyncStatus !== 'synced') details.push(`Inventory: ${inventorySyncStatus}`);
+    return details.length > 0 ? details.join(' | ') : 'All data synced';
   }, [settingsSyncStatus, transactionsSyncStatus, inventorySyncStatus]);
   
   // Memoize page props to prevent unnecessary re-renders
@@ -268,7 +277,7 @@ const App: React.FC = () => {
           </div>
       </div>
       <div className="flex-shrink-0">
-        <SyncStatusIndicator status={overallSyncStatus} />
+        <SyncStatusIndicator status={overallSyncStatus} details={syncDetails} />
       </div>
     </div>
   );
