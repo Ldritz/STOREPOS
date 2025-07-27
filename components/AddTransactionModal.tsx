@@ -143,7 +143,8 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
                 type,
                 amount: Math.round(numericAmount),
                 description,
-                date: transactionDate,
+                date: transactionDate
+                // Do NOT include items field for expenses
             });
             onClose();
         }
