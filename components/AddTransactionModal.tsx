@@ -122,13 +122,14 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
 
         if (type === TransactionType.Income) {
             if (cart.length > 0) {
-                onAddTransaction({
+                const tx = {
                     type,
                     amount: Math.round(totalAmount),
                     description: autoDescription,
                     date: transactionDate,
                     items: cart.map(c => ({ inventoryItemId: c.itemId, quantity: c.quantity })),
-                });
+                };
+                onAddTransaction(tx);
                 onClose();
             } else {
                 setError('Please add at least one product to the cart.');
@@ -139,13 +140,14 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
                 setError('Please enter a valid amount and description.');
                 return;
             }
-            onAddTransaction({
+            // Build the object WITHOUT the items field
+            const tx = {
                 type,
                 amount: Math.round(numericAmount),
                 description,
                 date: transactionDate
-                // Do NOT include items field for expenses
-            });
+            };
+            onAddTransaction(tx);
             onClose();
         }
     };
