@@ -157,7 +157,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
         });
         
         const dayDiff = firstTransactionDate 
-            ? Math.ceil((now.getTime() - firstTransactionDate.getTime()) / (1000 * 3600 * 24)) 
+            ? Math.ceil((now.getTime() - (firstTransactionDate as Date).getTime()) / (1000 * 3600 * 24)) 
             : 1;
         const daysToAvg = dayDiff > 0 ? dayDiff : 1;
 

@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { SyncStatus } from '../types';
 
-function useFirestoreDoc<T>(
+function useFirestoreDoc<T extends { [x: string]: any }>(
     collectionName: string,
     docId: string,
     initialData: T
@@ -47,7 +47,7 @@ function useFirestoreDoc<T>(
     const updateData = useCallback(async (updates: Partial<T>) => {
         const docRef = doc(db, collectionName, docId);
         try {
-            await updateDoc(docRef, updates);
+            await updateDoc(docRef, updates as any);
         } catch (e) {
             console.error("Error updating document: ", e);
             throw e;

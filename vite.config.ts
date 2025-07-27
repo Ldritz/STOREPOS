@@ -12,6 +12,49 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              // Separate vendor chunks for better caching
+              vendor: ['react', 'react-dom'],
+              // Separate recharts as it's a large library
+              charts: ['recharts'],
+              // Separate Firebase as it's used across the app
+              firebase: ['firebase'],
+            },
+            // Optimize chunk naming
+            chunkFileNames: () => `js/[name]-[hash].js`,
+            entryFileNames: 'js/[name]-[hash].js',
+            assetFileNames: 'assets/[name]-[hash].[ext]'
+          }
+        },
+        // Enable source maps for debugging
+        sourcemap: mode === 'development',
+        // Optimize chunk size warnings
+        chunkSizeWarningLimit: 1000,
+        // Enable minification
+        minify: 'terser',
+        terserOptions: {
+          compress: {
+            drop_console: mode === 'production',
+            drop_debugger: mode === 'production'
+          }
+        }
+      },
+      // Optimize development server
+      server: {
+        hmr: true,
+        // Enable faster refresh
+        watch: {
+          usePolling: false
+        }
+      },
+      // Optimize dependencies
+      optimizeDeps: {
+        include: ['react', 'react-dom'],
+        exclude: ['recharts'] // Let recharts be lazy loaded
       }
     };
 });

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, orderBy, writeBatch, getDocs, where, WhereFilterOp } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, orderBy, writeBatch, where, WhereFilterOp } from 'firebase/firestore';
 import { SyncStatus } from '../types';
 
 export interface FirestoreQuery {
@@ -25,11 +25,10 @@ function useFirestoreCollection<T extends { id: string }>(
 
         const collectionRef = collection(db, collectionName);
         const queryConstraints = queries.map(q => where(q.field, q.operator, q.value));
-        if (defaultSortField) {
-            queryConstraints.push(orderBy(defaultSortField, defaultSortDirection));
-        }
+        const sortConstraints = defaultSortField ? [orderBy(defaultSortField, defaultSortDirection)] : [];
+        const allConstraints = [...queryConstraints, ...sortConstraints];
 
-        const q = query(collectionRef, ...queryConstraints);
+        const q = query(collectionRef, ...allConstraints);
 
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const collectionData: T[] = [];
