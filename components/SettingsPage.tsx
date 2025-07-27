@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AppSettings, Transaction, InventoryItem } from '../types';
 import Card from './Card';
-import { UploadIcon, DownloadIcon, ImageIcon, SunIcon, MoonIcon } from './Icons';
+import { PlusIcon, TrashIcon, OlescoLogo, SunIcon, MoonIcon } from './Icons';
 
 interface SettingsPageProps {
   settings: AppSettings;
@@ -137,7 +137,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onSaveSettings, t
                 {storeLogo ? (
                     <img src={storeLogo} alt="Logo Preview" className="w-full h-full object-cover rounded-md" />
                 ) : (
-                    <ImageIcon className="w-10 h-10 text-muted-foreground" />
+                    <OlescoLogo className="w-10 h-10 text-muted-foreground" />
                 )}
               </div>
               <div className="flex-1 space-y-2">
@@ -145,7 +145,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onSaveSettings, t
                 <div className="text-center text-muted-foreground text-sm">OR</div>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-secondary border border-border rounded-md hover:bg-muted transition-colors">
-                  <UploadIcon className="w-5 h-5" />
+                  <PlusIcon className="w-5 h-5" />
                   <span>Upload File</span>
                 </button>
               </div>
@@ -181,7 +181,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onSaveSettings, t
           <p className="text-sm text-muted-foreground">Export all sales and expenses to a CSV file.</p>
           <div className="flex justify-end pt-2">
             <button onClick={handleExport} className="flex items-center gap-2 bg-secondary text-secondary-foreground font-bold py-2 px-4 rounded-lg hover:bg-muted transition-colors border border-border">
-              <DownloadIcon className="w-5 h-5" />
+              <TrashIcon className="w-5 h-5" />
               <span>Export All Data</span>
             </button>
           </div>

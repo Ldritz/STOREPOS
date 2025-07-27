@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, ReactNode } from 'react';
 import { Transaction, TransactionType, InventoryItem } from '../types';
-import { CloseIcon, TrashIcon } from './Icons';
+import { PlusIcon, TrashIcon } from './Icons';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -206,7 +206,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
             <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-lg animate-slide-in-up max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
                 <div className="flex justify-between items-center p-4 border-b border-border">
                     <h2 className="text-xl font-bold text-card-foreground">Add Transaction</h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><CloseIcon className="w-6 h-6"/></button>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><PlusIcon className="w-6 h-6 rotate-45"/></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
                     <div className="grid grid-cols-2 gap-2 rounded-lg p-1 bg-muted">

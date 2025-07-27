@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Card from './Card';
 import { Transaction, TransactionType, InventoryItem, Page } from '../types';
-import { TrendingUpIcon, TrendingDownIcon, WalletIcon, WarningIcon, TrendingUpIcon as TrendingUpIcon2 } from './Icons';
+import { TrendingUpIcon, TrendingDownIcon, WalletIcon, WarningIcon } from './Icons';
 
 // Chart Component (styling changes for dark theme)
 interface ChartData { name: string; income: number; expense: number; }
@@ -13,7 +13,7 @@ const IncomeExpenseChart: React.FC<{ data: ChartData[] }> = React.memo(({ data }
     <div className="w-full h-72 md:h-80">
       <ResponsiveContainer>
         <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
           <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={formatYAxis} />
           <Tooltip
@@ -21,9 +21,8 @@ const IncomeExpenseChart: React.FC<{ data: ChartData[] }> = React.memo(({ data }
             contentStyle={{
               backgroundColor: 'hsl(var(--popover))',
               borderColor: 'hsl(var(--border))',
-              borderRadius: '0.75rem',
-              color: 'hsl(var(--popover-foreground))',
-              boxShadow: '0 10px 40px -10px rgba(0, 0, 0, 0.15)',
+              borderRadius: '0.5rem',
+              color: 'hsl(var(--popover-foreground))'
             }}
              labelStyle={{ fontWeight: 'bold' }}
           />
@@ -42,30 +41,17 @@ interface StatCardProps {
   amount: number;
   Icon: React.ElementType;
   iconClass: string;
-  trend?: number;
-  trendLabel?: string;
 }
-const StatCard: React.FC<StatCardProps> = React.memo(({ title, amount, Icon, iconClass, trend, trendLabel }) => (
-    <div className="card-modern group hover:shadow-strong transition-all duration-300">
-        <div className="flex justify-between items-start">
-            <div className="flex-1">
-                <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider">{title}</p>
-                <p className="text-2xl lg:text-3xl font-bold text-foreground mt-2">
-                    {amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
-                </p>
-                {trend !== undefined && (
-                  <div className={`flex items-center gap-1 mt-2 text-sm ${
-                    trend > 0 ? 'text-success' : trend < 0 ? 'text-destructive' : 'text-muted-foreground'
-                  }`}>
-                    <TrendingUpIcon2 className={`w-4 h-4 ${trend < 0 ? 'rotate-180' : ''}`} />
-                    <span className="font-medium">{Math.abs(trend)}%</span>
-                    <span className="text-muted-foreground">{trendLabel}</span>
-                  </div>
-                )}
-            </div>
-            <div className={`p-3 rounded-xl ${iconClass} group-hover:scale-110 transition-transform duration-300`}>
-                <Icon className="w-8 h-8" />
-            </div>
+const StatCard: React.FC<StatCardProps> = React.memo(({ title, amount, Icon, iconClass }) => (
+    <div className="bg-card border border-border p-4 rounded-lg flex justify-between items-center">
+        <div>
+            <p className="text-sm text-muted-foreground font-medium">{title}</p>
+            <p className="text-2xl lg:text-3xl font-bold text-foreground mt-1">
+                {amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
+            </p>
+        </div>
+        <div className={`p-3 rounded-md ${iconClass}`}>
+            <Icon className="w-8 h-8" />
         </div>
     </div>
 ));
@@ -81,37 +67,26 @@ const LowStockAlerts: React.FC<LowStockAlertsProps> = React.memo(({ inventory, o
     );
 
     return (
-        <Card 
-          title="Low Stock Alerts" 
-          subtitle={`${lowStockItems.length} items need attention`}
-          icon={<WarningIcon className="w-5 h-5" />}
-          actions={
-            <button onClick={() => onNavigate(Page.Inventory)} className="text-sm text-primary font-semibold hover:underline transition-colors">
-                Manage &rarr;
-            </button>
-          }
-        >
+        <Card title="Low Stock Alerts" actions={
+             <button onClick={() => onNavigate(Page.Inventory)} className="text-sm text-primary font-semibold hover:underline">
+                 Manage &rarr;
+             </button>
+         }>
             {lowStockItems.length > 0 ? (
-                <div className='h-72 overflow-y-auto pr-2 space-y-2'>
-                    {lowStockItems.slice(0, 5).map(item => (
-                        <div key={item.id} className="flex justify-between items-center p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-                            <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 bg-destructive rounded-full animate-pulse"></div>
-                                <span className="text-sm font-medium text-foreground">{item.name}</span>
-                            </div>
-                            <span className="font-bold text-destructive text-sm">
-                                {item.stock} {item.unit} left
-                            </span>
-                        </div>
-                    ))}
+                <div className='h-72 overflow-y-auto pr-2'>
+                    <ul className="space-y-2">
+                        {lowStockItems.slice(0, 5).map(item => (
+                            <li key={item.id} className="flex justify-between items-center text-sm p-3 bg-secondary rounded-md">
+                                <span className="text-secondary-foreground">{item.name}</span>
+                                <span className="font-bold text-destructive">{item.stock} {item.unit} left</span>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             ) : (
-                <div className="text-center text-muted-foreground py-8">
-                    <div className="w-16 h-16 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <TrendingUpIcon className="w-8 h-8 text-success" />
-                    </div>
-                    <p className="font-semibold text-foreground">No low stock items</p>
-                    <p className="text-sm">Well done! All items are well stocked.</p>
+                <div className="text-center text-muted-foreground">
+                    <p className="font-semibold">No low stock items.</p>
+                    <p className="text-sm">Well done!</p>
                 </div>
             )}
         </Card>
@@ -125,31 +100,24 @@ interface TopProductsChartProps {
 const TopProductsChart: React.FC<TopProductsChartProps> = React.memo(({ data }) => {
     const formatCurrency = (value: number) => `₱${value.toLocaleString()}`;
     return (
-        <Card 
-          title="Top Products by Revenue" 
-          subtitle="Best performing products this month"
-          icon={<TrendingUpIcon className="w-5 h-5" />}
-        >
+        <Card title="Top Products by Revenue">
             {data.length > 0 ? (
                 <div className="space-y-3">
                     {data.map((product, index) => (
-                        <div key={product.name} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors">
+                        <div key={product.name} className="flex items-center justify-between p-3 bg-secondary rounded-md">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-sm font-bold flex items-center justify-center">
+                                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
                                     {index + 1}
                                 </div>
                                 <span className="font-medium text-foreground">{product.name}</span>
                             </div>
-                            <span className="font-bold text-success font-mono">{formatCurrency(product.revenue)}</span>
+                            <span className="font-bold text-success">{formatCurrency(product.revenue)}</span>
                         </div>
                     ))}
                 </div>
             ) : (
                 <div className="text-center text-muted-foreground py-8">
-                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                        <TrendingUpIcon className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                    <p className="font-semibold text-foreground">No product data available</p>
+                    <p className="font-semibold">No product data available.</p>
                     <p className="text-sm">Add some sales to see top products!</p>
                 </div>
             )}
@@ -163,22 +131,16 @@ interface SummaryRowProps {
     amount: number;
     Icon: React.ElementType;
     iconClass: string;
-    trend?: number;
 }
-const SummaryRow: React.FC<SummaryRowProps> = React.memo(({ title, amount, Icon, iconClass, trend }) => (
-    <div className="card-modern hover:shadow-medium transition-all duration-300">
-        <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-xl ${iconClass}`}>
-                <Icon className="w-6 h-6" />
+const SummaryRow: React.FC<SummaryRowProps> = React.memo(({ title, amount, Icon, iconClass }) => (
+    <div className="bg-card border border-border p-4 rounded-lg flex justify-between items-center">
+        <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-md ${iconClass}`}>
+                <Icon className="w-5 h-5" />
             </div>
-            <div className="flex-1">
-                <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider">{title}</p>
+            <div>
+                <p className="text-sm text-muted-foreground font-medium">{title}</p>
                 <p className="text-xl font-bold text-foreground">{amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}</p>
-                {trend !== undefined && (
-                  <p className={`text-xs mt-1 ${trend > 0 ? 'text-success' : 'text-destructive'}`}>
-                    {trend > 0 ? '+' : ''}{trend}% from last month
-                  </p>
-                )}
             </div>
         </div>
     </div>
@@ -257,22 +219,8 @@ const DashboardPage: React.FC<DashboardPageProps> = React.memo(({ transactions, 
     return (
         <div className="space-y-6 animate-fade-in">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <StatCard 
-                  title="TODAY'S INCOME" 
-                  amount={todaysIncome} 
-                  Icon={TrendingUpIcon} 
-                  iconClass="bg-success/20 text-success" 
-                  trend={12}
-                  trendLabel="vs yesterday"
-                />
-                <StatCard 
-                  title="TODAY'S EXPENSES" 
-                  amount={todaysExpenses} 
-                  Icon={TrendingDownIcon} 
-                  iconClass="bg-warning/20 text-warning"
-                  trend={-5}
-                  trendLabel="vs yesterday"
-                />
+                <StatCard title="TODAY'S INCOME" amount={todaysIncome} Icon={TrendingUpIcon} iconClass="bg-success text-success-foreground" />
+                <StatCard title="TODAY'S EXPENSES" amount={todaysExpenses} Icon={TrendingDownIcon} iconClass="bg-warning text-warning-foreground" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -280,28 +228,21 @@ const DashboardPage: React.FC<DashboardPageProps> = React.memo(({ transactions, 
                 <TopProductsChart data={topProductsData} />
             </div>
 
-            <Card 
-              title="Monthly Performance" 
-              subtitle="Income vs Expenses over time"
-              icon={<TrendingUpIcon className="w-5 h-5" />}
-            >
+            <Card title="Monthly Performance">
                  {chartData.length > 0 ? (
                     <IncomeExpenseChart data={chartData} />
                 ) : (
                     <div className="h-full flex flex-col justify-center items-center text-center py-10 text-muted-foreground">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                            <TrendingUpIcon className="w-8 h-8 text-muted-foreground" />
-                        </div>
-                        <p className="font-semibold text-foreground">No transaction data for chart</p>
+                        <p className="font-semibold">No transaction data for chart.</p>
                         <p className="text-sm">Add some transactions to get started!</p>
                     </div>
                 )}
             </Card>
 
             <div className="space-y-4">
-                <SummaryRow title="TOTAL INCOME" amount={totalIncome} Icon={TrendingUpIcon} iconClass="bg-success/20 text-success" trend={8} />
-                <SummaryRow title="TOTAL EXPENSES" amount={totalExpenses} Icon={TrendingDownIcon} iconClass="bg-warning/20 text-warning" trend={-3} />
-                <SummaryRow title="NET INCOME" amount={netIncome} Icon={WalletIcon} iconClass="bg-info/20 text-info" trend={15} />
+                <SummaryRow title="TOTAL INCOME" amount={totalIncome} Icon={TrendingUpIcon} iconClass="bg-success text-success-foreground" />
+                <SummaryRow title="TOTAL EXPENSES" amount={totalExpenses} Icon={TrendingDownIcon} iconClass="bg-warning text-warning-foreground" />
+                <SummaryRow title="NET INCOME" amount={netIncome} Icon={WalletIcon} iconClass="bg-info text-info-foreground" />
             </div>
         </div>
     );
