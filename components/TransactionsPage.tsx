@@ -15,13 +15,13 @@ interface StatBoxProps {
     value: number;
     avg?: number;
 }
-const StatBox: React.FC<StatBoxProps> = ({ title, value, avg }) => (
+const StatBox: React.FC<StatBoxProps> = React.memo(({ title, value, avg }) => (
     <div className="text-center md:text-left">
         <p className="text-xs text-muted-foreground uppercase tracking-wider">{title}</p>
         <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(value)}</p>
         {avg !== undefined && <p className="text-xs text-muted-foreground">avg {formatCurrency(avg)}/day</p>}
     </div>
-);
+));
 
 interface OverviewCardProps {
     title: string;
@@ -33,7 +33,7 @@ interface OverviewCardProps {
         avgAllTime: number;
     };
 }
-const OverviewCard: React.FC<OverviewCardProps> = ({ title, stats }) => (
+const OverviewCard: React.FC<OverviewCardProps> = React.memo(({ title, stats }) => (
     <div className="bg-card border border-border p-4 sm:p-6 rounded-lg">
         <h3 className="text-lg font-bold text-card-foreground mb-4">{title}</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -42,7 +42,7 @@ const OverviewCard: React.FC<OverviewCardProps> = ({ title, stats }) => (
             <StatBox title="All Time" value={stats.allTime} avg={stats.avgAllTime} />
         </div>
     </div>
-);
+));
 
 
 // --- Cashbook Components ---
@@ -64,7 +64,7 @@ interface CashbookTableProps {
     sortedDateKeys: string[];
 }
 
-const CashbookTable: React.FC<CashbookTableProps> = ({ data, sortedDateKeys }) => {
+const CashbookTable: React.FC<CashbookTableProps> = React.memo(({ data, sortedDateKeys }) => {
     return (
         <div className="bg-card border border-border rounded-lg overflow-hidden animate-fade-in">
             <div className="overflow-x-auto">
@@ -102,9 +102,9 @@ const CashbookTable: React.FC<CashbookTableProps> = ({ data, sortedDateKeys }) =
                             );
                         }) : (
                             <tr>
-                                <td colSpan={4} className="text-center py-16 text-muted-foreground">
-                                     <p className="font-semibold text-lg">No transactions found.</p>
-                                     <p>Try changing the filter.</p>
+                                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                                    <p className="font-semibold">No transactions found.</p>
+                                    <p className="text-sm">Add some transactions to get started!</p>
                                 </td>
                             </tr>
                         )}
@@ -113,9 +113,7 @@ const CashbookTable: React.FC<CashbookTableProps> = ({ data, sortedDateKeys }) =
             </div>
         </div>
     );
-};
-
-// --- Main Page Component ---
+});
 
 interface TransactionsPageProps {
   transactions: Transaction[];
@@ -123,208 +121,249 @@ interface TransactionsPageProps {
   onDeleteTransaction: (transaction: Transaction) => void;
 }
 
-const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDeleteTransaction }) => {
-    const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
-    const [viewMode, setViewMode] = useState<'list' | 'cashbook'>('list');
+const TransactionsPage: React.FC<TransactionsPageProps> = React.memo(({ transactions, onDeleteTransaction }) => {
+    const [viewMode, setViewMode] = useState<'cashbook' | 'list'>('cashbook');
+    const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
     const { incomeStats, expenseStats } = useMemo(() => {
-        const now = new Date();
-        const todayStr = now.toISOString().split('T')[0];
-        
-        const weekAgo = new Date(now);
-        weekAgo.setDate(now.getDate() - 6);
-        weekAgo.setHours(0, 0, 0, 0);
+        const today = new Date().toISOString().split('T')[0];
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const weekStartStr = weekStart.toISOString().split('T')[0];
 
-        let todaysIncome = 0, weeklyIncome = 0, totalIncome = 0;
-        let todaysExpenses = 0, weeklyExpenses = 0, totalExpenses = 0;
-        let firstTransactionDate: Date | null = null;
-        
-        const sortedTransactions = [...transactions].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        let todayIncome = 0, todayExpense = 0;
+        let weekIncome = 0, weekExpense = 0;
+        let allTimeIncome = 0, allTimeExpense = 0;
 
-        sortedTransactions.forEach(t => {
-            const tDate = new Date(t.date);
-            if (!firstTransactionDate) firstTransactionDate = tDate;
+        transactions.forEach(t => {
+            const isToday = t.date.startsWith(today);
+            const isThisWeek = t.date >= weekStartStr;
 
             if (t.type === TransactionType.Income) {
-                totalIncome += t.amount;
-                if (t.date.startsWith(todayStr)) todaysIncome += t.amount;
-                if (tDate >= weekAgo) weeklyIncome += t.amount;
+                allTimeIncome += t.amount;
+                if (isToday) todayIncome += t.amount;
+                if (isThisWeek) weekIncome += t.amount;
             } else {
-                totalExpenses += t.amount;
-                if (t.date.startsWith(todayStr)) todaysExpenses += t.amount;
-                if (tDate >= weekAgo) weeklyExpenses += t.amount;
+                allTimeExpense += t.amount;
+                if (isToday) todayExpense += t.amount;
+                if (isThisWeek) weekExpense += t.amount;
             }
         });
-        
-        const dayDiff = firstTransactionDate 
-            ? Math.ceil((now.getTime() - firstTransactionDate.getTime()) / (1000 * 3600 * 24)) 
-            : 1;
-        const daysToAvg = dayDiff > 0 ? dayDiff : 1;
+
+        const daysInWeek = 7;
+        const totalDays = transactions.length > 0 ? Math.max(1, Math.ceil((new Date().getTime() - new Date(transactions[transactions.length - 1].date).getTime()) / (1000 * 60 * 60 * 24))) : 1;
 
         return {
-            incomeStats: { today: todaysIncome, thisWeek: weeklyIncome, allTime: totalIncome, avgWeek: weeklyIncome / 7, avgAllTime: totalIncome / daysToAvg },
-            expenseStats: { today: todaysExpenses, thisWeek: weeklyExpenses, allTime: totalExpenses, avgWeek: weeklyExpenses / 7, avgAllTime: totalExpenses / daysToAvg }
+            incomeStats: {
+                today: todayIncome,
+                thisWeek: weekIncome,
+                allTime: allTimeIncome,
+                avgWeek: weekIncome / daysInWeek,
+                avgAllTime: allTimeIncome / totalDays
+            },
+            expenseStats: {
+                today: todayExpense,
+                thisWeek: weekExpense,
+                allTime: allTimeExpense,
+                avgWeek: weekExpense / daysInWeek,
+                avgAllTime: allTimeExpense / totalDays
+            }
         };
     }, [transactions]);
 
     const { groupedCashbookData, sortedCashbookDateKeys } = useMemo(() => {
-        const groups: GroupedCashbookData = {};
+        const grouped: GroupedCashbookData = {};
         
-        const filtered = transactions.filter(t => filterType === 'ALL' || t.type === filterType);
-        
-        filtered.forEach(t => {
-            const dateStr = t.date.split('T')[0];
-            if (!groups[dateStr]) {
-                groups[dateStr] = { transactions: [], totalIncome: 0, totalExpense: 0 };
+        transactions.forEach(t => {
+            const dateKey = t.date;
+            if (!grouped[dateKey]) {
+                grouped[dateKey] = {
+                    transactions: [],
+                    totalIncome: 0,
+                    totalExpense: 0
+                };
             }
-            
-            groups[dateStr].transactions.push({
+
+            const rowData: CashbookRowData = {
                 id: t.id,
                 description: t.description,
                 income: t.type === TransactionType.Income ? t.amount : null,
-                expense: t.type === TransactionType.Expense ? t.amount : null,
-            });
+                expense: t.type === TransactionType.Expense ? t.amount : null
+            };
 
+            grouped[dateKey].transactions.push(rowData);
+            
             if (t.type === TransactionType.Income) {
-                groups[dateStr].totalIncome += t.amount;
+                grouped[dateKey].totalIncome += t.amount;
             } else {
-                groups[dateStr].totalExpense += t.amount;
+                grouped[dateKey].totalExpense += t.amount;
             }
         });
-        
-        for (const dateKey in groups) {
-            groups[dateKey].transactions.sort((a,b) => {
-                const transactionA = transactions.find(t => t.id === a.id)!;
-                const transactionB = transactions.find(t => t.id === b.id)!;
-                return new Date(transactionA.date).getTime() - new Date(transactionB.date).getTime();
-            });
-        }
-        
-        const sortedKeys = Object.keys(groups).sort((a,b) => new Date(b).getTime() - new Date(a).getTime());
 
+        const sortedKeys = Object.keys(grouped).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
-        return { groupedCashbookData: groups, sortedCashbookDateKeys: sortedKeys };
-    }, [transactions, filterType]);
+        return { groupedCashbookData: grouped, sortedCashbookDateKeys: sortedKeys };
+    }, [transactions]);
 
     const groupedTransactions = useMemo(() => {
-        return transactions
-            .filter(t => filterType === 'ALL' || t.type === filterType)
-            .reduce((acc, t) => {
-                const dateStr = t.date.split('T')[0];
-                if (!acc[dateStr]) acc[dateStr] = [];
-                acc[dateStr].push(t);
-                return acc;
-            }, {} as Record<string, Transaction[]>);
-    }, [transactions, filterType]);
-    
-    const sortedDateKeys = Object.keys(groupedTransactions).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+        const grouped: { [date: string]: Transaction[] } = {};
+        
+        transactions.forEach(t => {
+            const dateKey = t.date;
+            if (!grouped[dateKey]) {
+                grouped[dateKey] = [];
+            }
+            grouped[dateKey].push(t);
+        });
+
+        return Object.entries(grouped)
+            .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
+            .map(([date, transactions]) => ({
+                date,
+                transactions: transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            }));
+    }, [transactions]);
 
     const formatDateHeader = (dateStr: string) => {
+        const date = new Date(dateStr + 'T00:00:00');
         const today = new Date();
-        const yesterday = new Date();
-        yesterday.setDate(today.getDate() - 1);
-        const date = new Date(dateStr  + 'T00:00:00');
-        
-        if (date.toDateString() === today.toDateString()) return 'TODAY';
-        if (date.toDateString() === yesterday.toDateString()) return 'YESTERDAY';
-        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (date.toDateString() === today.toDateString()) {
+            return 'Today';
+        } else if (date.toDateString() === yesterday.toDateString()) {
+            return 'Yesterday';
+        } else {
+            return date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
     };
 
-    const tabs = [ { label: 'All', value: 'ALL' }, { label: 'Sales', value: TransactionType.Income }, { label: 'Expenses', value: TransactionType.Expense } ];
+    const toggleDateExpansion = (date: string) => {
+        const newExpanded = new Set(expandedDates);
+        if (newExpanded.has(date)) {
+            newExpanded.delete(date);
+        } else {
+            newExpanded.add(date);
+        }
+        setExpandedDates(newExpanded);
+    };
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <OverviewCard title="Income Overview" stats={incomeStats} />
-                <OverviewCard title="Expense Overview" stats={expenseStats} />
+            {/* Overview Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <OverviewCard title="Income" stats={incomeStats} />
+                <OverviewCard title="Expenses" stats={expenseStats} />
             </div>
 
-            <div className="flex justify-between items-center border-b border-border">
-                <div className="flex space-x-6">
-                    {tabs.map(tab => (
-                        <button 
-                            key={tab.value}
-                            onClick={() => setFilterType(tab.value as any)}
-                            className={`py-2 font-semibold transition-colors ${filterType === tab.value ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-                 <div className="flex items-center gap-1 bg-secondary p-1 rounded-lg">
-                    <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} aria-label="List View">
-                        <ListBulletIcon className="w-5 h-5"/>
+            {/* View Mode Toggle */}
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-foreground">Transaction History</h3>
+                <div className="flex bg-secondary rounded-lg p-1">
+                    <button
+                        onClick={() => setViewMode('cashbook')}
+                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            viewMode === 'cashbook' 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        <div className="flex items-center gap-2">
+                            <TableCellsIcon className="w-4 h-4" />
+                            Cashbook
+                        </div>
                     </button>
-                    <button onClick={() => setViewMode('cashbook')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'cashbook' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} aria-label="Cashbook View">
-                        <TableCellsIcon className="w-5 h-5"/>
+                    <button
+                        onClick={() => setViewMode('list')}
+                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            viewMode === 'list' 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        <div className="flex items-center gap-2">
+                            <ListBulletIcon className="w-4 h-4" />
+                            List
+                        </div>
                     </button>
                 </div>
             </div>
 
-            {viewMode === 'list' ? (
-                 <div className="space-y-6 animate-fade-in">
-                    {sortedDateKeys.length > 0 ? sortedDateKeys.map(dateKey => {
-                        const dailyTransactions = groupedTransactions[dateKey];
-                        const dailyIncome = dailyTransactions.filter(t => t.type === TransactionType.Income).reduce((sum, t) => sum + t.amount, 0);
-                        const dailyExpenses = dailyTransactions.filter(t => t.type === TransactionType.Expense).reduce((sum, t) => sum + t.amount, 0);
-                        const dailyNet = dailyIncome - dailyExpenses;
-
-                        return (
-                            <div key={dateKey} className="space-y-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-px flex-1 bg-border"></div>
-                                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{formatDateHeader(dateKey)}</h4>
-                                    <div className="h-px flex-1 bg-border"></div>
+            {/* Content */}
+            {viewMode === 'cashbook' ? (
+                <CashbookTable data={groupedCashbookData} sortedDateKeys={sortedCashbookDateKeys} />
+            ) : (
+                <div className="space-y-4">
+                    {groupedTransactions.length > 0 ? groupedTransactions.map(({ date, transactions }) => (
+                        <div key={date} className="bg-card border border-border rounded-lg overflow-hidden">
+                            <div className="p-4 border-b border-border">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h4 className="font-semibold text-foreground">{formatDateHeader(date)}</h4>
+                                        <p className="text-sm text-muted-foreground">
+                                            {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => toggleDateExpansion(date)}
+                                        className="text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                        <ChevronDownIcon className={`w-5 h-5 transition-transform ${expandedDates.has(date) ? 'rotate-180' : ''}`} />
+                                    </button>
                                 </div>
-                                
-                                <div className="grid grid-cols-3 gap-2 text-center bg-card border border-border p-3 rounded-lg">
-                                    <div><span className="text-xs text-muted-foreground block">INCOME</span><span className="font-bold text-success">{formatCurrency(dailyIncome)}</span></div>
-                                    <div><span className="text-xs text-muted-foreground block">EXPENSES</span><span className="font-bold text-warning">{formatCurrency(dailyExpenses)}</span></div>
-                                    <div><span className={`font-bold ${dailyNet < 0 ? 'text-destructive' : 'text-info'}`}><span className="text-xs text-muted-foreground block">NET</span>{formatCurrency(dailyNet)}</span></div>
-                                </div>
-                                
-                                <div className="space-y-2">
-                                    {dailyTransactions.map(t => (
-                                        <div key={t.id} className="bg-card border border-border p-4 rounded-lg flex justify-between items-center group">
-                                            <div className="flex-1 min-w-0 pr-4">
-                                                 <p className="font-bold text-foreground truncate">{t.description}</p>
-                                                 <p className="text-sm text-muted-foreground">{new Date(t.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>
+                            </div>
+                            
+                            {expandedDates.has(date) && (
+                                <div className="divide-y divide-border">
+                                    {transactions.map(transaction => (
+                                        <div key={transaction.id} className="p-4 flex items-center justify-between">
+                                            <div className="flex-1">
+                                                <p className="font-medium text-foreground">{transaction.description}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {new Date(transaction.date).toLocaleTimeString('en-US', { 
+                                                        hour: '2-digit', 
+                                                        minute: '2-digit' 
+                                                    })}
+                                                </p>
                                             </div>
-                                            <div className="flex items-center gap-2 sm:gap-4">
-                                                {t.type === TransactionType.Income ? (
-                                                    <div className="text-right">
-                                                        <p className="font-bold text-lg text-success">{formatCurrency(t.amount)}</p>
-                                                        {t.items && t.items.length > 0 && 
-                                                          <div className="flex items-center justify-end gap-1 text-muted-foreground">
-                                                            <span className="text-xs">{t.items?.reduce((acc, i) => acc + i.quantity, 0) || 1} item(s)</span>
-                                                            <ChevronDownIcon className="w-4 h-4" />
-                                                          </div>
-                                                        }
-                                                    </div>
-                                                ) : (
-                                                    <p className="font-bold text-lg text-warning">{formatCurrency(t.amount)}</p>
-                                                )}
-                                                <button onClick={() => onDeleteTransaction(t)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100">
-                                                    <TrashIcon className="w-5 h-5"/>
+                                            <div className="flex items-center gap-3">
+                                                <span className={`font-mono font-bold ${
+                                                    transaction.type === TransactionType.Income 
+                                                        ? 'text-success' 
+                                                        : 'text-warning'
+                                                }`}>
+                                                    {transaction.type === TransactionType.Income ? '+' : '-'}
+                                                    {formatCurrency(transaction.amount, true)}
+                                                </span>
+                                                <button
+                                                    onClick={() => onDeleteTransaction(transaction)}
+                                                    className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                                                    title="Delete transaction"
+                                                >
+                                                    <TrashIcon className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        );
-                    }) : (
-                        <div className="text-center py-16 text-muted-foreground">
-                            <p className="font-semibold text-lg">No transactions found.</p>
-                            <p>Try changing the filter or adding a new transaction.</p>
+                            )}
+                        </div>
+                    )) : (
+                        <div className="text-center py-12 text-muted-foreground">
+                            <p className="font-semibold">No transactions found.</p>
+                            <p className="text-sm">Add some transactions to get started!</p>
                         </div>
                     )}
                 </div>
-            ) : (
-                <CashbookTable data={groupedCashbookData} sortedDateKeys={sortedCashbookDateKeys} />
             )}
         </div>
     );
-};
+});
 
 export default TransactionsPage;

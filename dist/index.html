@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Olesco Agrivet Trading</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              border: 'hsl(var(--border))',
+              input: 'hsl(var(--input))',
+              ring: 'hsl(var(--ring))',
+              background: 'hsl(var(--background))',
+              foreground: 'hsl(var(--foreground))',
+              primary: {
+                DEFAULT: 'hsl(var(--primary))',
+                foreground: 'hsl(var(--primary-foreground))',
+              },
+              secondary: {
+                DEFAULT: 'hsl(var(--secondary))',
+                foreground: 'hsl(var(--secondary-foreground))',
+              },
+              destructive: {
+                DEFAULT: 'hsl(var(--destructive))',
+                foreground: 'hsl(var(--destructive-foreground))',
+              },
+              muted: {
+                DEFAULT: 'hsl(var(--muted))',
+                foreground: 'hsl(var(--muted-foreground))',
+              },
+              accent: {
+                DEFAULT: 'hsl(var(--accent))',
+                foreground: 'hsl(var(--accent-foreground))',
+              },
+              popover: {
+                DEFAULT: 'hsl(var(--popover))',
+                foreground: 'hsl(var(--popover-foreground))',
+              },
+              card: {
+                DEFAULT: 'hsl(var(--card))',
+                foreground: 'hsl(var(--card-foreground))',
+              },
+              info: {
+                DEFAULT: 'hsl(var(--info))',
+                foreground: 'hsl(var(--info-foreground))',
+              },
+              success: {
+                DEFAULT: 'hsl(var(--success))',
+                foreground: 'hsl(var(--success-foreground))',
+              },
+              warning: {
+                DEFAULT: 'hsl(var(--warning))',
+                foreground: 'hsl(var(--warning-foreground))',
+              },
+              error: {
+                DEFAULT: 'hsl(var(--error))',
+                foreground: 'hsl(var(--error-foreground))',
+              },
+            },
+            borderRadius: {
+              lg: `0.75rem`,
+              md: `0.5rem`,
+              sm: `0.25rem`,
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.3s ease-in-out',
+              'slide-in-up': 'slideInUp 0.3s ease-out',
+              'spin': 'spin 1s linear infinite',
+            },
+            keyframes: {
+              fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+              slideInUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+              spin: {
+                from: { transform: 'rotate(0deg)' },
+                to: { transform: 'rotate(360deg)' },
+              },
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 224 71.4% 4.1%;
+            --card: 0 0% 100%;
+            --card-foreground: 224 71.4% 4.1%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 224 71.4% 4.1%;
+            --primary: 142.1 76.2% 36.3%;
+            --primary-foreground: 355.7 100% 97.3%;
+            --secondary: 240 4.8% 95.9%;
+            --secondary-foreground: 224 71.4% 4.1%;
+            --muted: 240 4.8% 95.9%;
+            --muted-foreground: 240 3.8% 46.1%;
+            --accent: 240 4.8% 95.9%;
+            --accent-foreground: 224 71.4% 4.1%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 20% 98%;
+            --border: 240 5.9% 90%;
+            --input: 240 5.9% 90%;
+            --ring: 142.1 76.2% 36.3%;
+            --info: 217.2 91.2% 59.8%;
+            --info-foreground: 210 20% 98%;
+            --success: 142.1 76.2% 36.3%;
+            --success-foreground: 210 20% 98%;
+            --warning: 47.9 95.8% 53.1%;
+            --warning-foreground: 224 71.4% 4.1%;
+            --error: 0 84.2% 60.2%;
+            --error-foreground: 210 20% 98%;
+        }
+        .dark {
+            --background: 240 5% 9.6%;
+            --foreground: 240 5% 95%;
+            --card: 240 5% 12%;
+            --card-foreground: 240 5% 95%;
+            --popover: 240 5% 9.6%;
+            --popover-foreground: 240 5% 95%;
+            --primary: 142.1 70.6% 45.3%;
+            --primary-foreground: 144.9 80.4% 10%;
+            --secondary: 240 5% 16%;
+            --secondary-foreground: 240 5% 95%;
+            --muted: 240 5% 16%;
+            --muted-foreground: 240 4% 65%;
+            --accent: 240 5% 16%;
+            --accent-foreground: 240 5% 95%;
+            --destructive: 0 72.2% 50.6%;
+            --destructive-foreground: 210 20% 98%;
+            --border: 240 5% 20%;
+            --input: 240 5% 20%;
+            --ring: 142.1 70.6% 45.3%;
+            --info: 217.2 91.2% 59.8%;
+            --info-foreground: 210 20% 98%;
+            --success: 142.1 70.6% 45.3%;
+            --success-foreground: 210 20% 98%;
+            --warning: 47.9 95.8% 53.1%;
+            --warning-foreground: 240 10% 3.9%;
+            --error: 0 72.2% 50.6%;
+            --error-foreground: 210 20% 98%;
+        }
+    </style>
+
+<link rel="stylesheet" href="/index.css">
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "recharts": "https://esm.sh/recharts@2.12.7",
+    "firebase/app": "https://esm.sh/firebase@10.12.2/app",
+    "firebase/firestore": "https://esm.sh/firebase@10.12.2/firestore",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "firebase/": "https://esm.sh/firebase@^12.0.0/"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/assets/index-FjrJvk9f.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/vendor-CWc6w16D.js">
+  <link rel="modulepreload" crossorigin href="/assets/charts-BYcMWlQw.js">
+</head>
+  <body class="bg-background text-foreground font-sans">
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

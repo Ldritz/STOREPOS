@@ -1,17 +1,27 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import useFirestoreCollection from './hooks/useFirestoreCollection';
 import useFirestoreDoc from './hooks/useFirestoreDoc';
 import { Page, Transaction, InventoryItem, TransactionType, AppSettings, SyncStatus } from './types';
-import DashboardPage from './components/DashboardPage';
-import TransactionsPage from './components/TransactionsPage';
-import InventoryPage from './components/InventoryPage';
-import SettingsPage from './components/SettingsPage';
 import AddTransactionModal from './components/AddTransactionModal';
 import BottomNav from './components/BottomNav';
 import SyncStatusIndicator from './components/SyncStatusIndicator';
+import ErrorBoundary from './components/ErrorBoundary';
 import { ShoppingCartIcon, DashboardIcon, TransactionsIcon, InventoryIcon, OlescoLogo, SettingsIcon } from './components/Icons';
 
-const App: React.FC = () => {
+// Lazy load page components for better performance
+const DashboardPage = lazy(() => import('./components/DashboardPage'));
+const TransactionsPage = lazy(() => import('./components/TransactionsPage'));
+const InventoryPage = lazy(() => import('./components/InventoryPage'));
+const SettingsPage = lazy(() => import('./components/SettingsPage'));
+
+// Loading component for lazy-loaded pages
+const PageLoader: React.FC = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+);
+
+const AppContent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Dashboard);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -99,19 +109,39 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case Page.Dashboard:
-        return <DashboardPage transactions={transactions} inventory={inventory} onNavigate={setCurrentPage}/>;
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <DashboardPage transactions={transactions} inventory={inventory} onNavigate={setCurrentPage}/>
+          </Suspense>
+        );
       case Page.Transactions:
-        return <TransactionsPage transactions={transactions} inventory={inventory} onDeleteTransaction={handleDeleteTransaction}/>;
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <TransactionsPage transactions={transactions} inventory={inventory} onDeleteTransaction={handleDeleteTransaction}/>
+          </Suspense>
+        );
       case Page.Inventory:
-        return <InventoryPage inventory={inventory} onSaveItem={handleSaveInventoryItem} onDeleteItem={handleDeleteInventoryItem} profitMarginDivisor={settings.profitMarginDivisor} />;
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <InventoryPage inventory={inventory} onSaveItem={handleSaveInventoryItem} onDeleteItem={handleDeleteInventoryItem} profitMarginDivisor={settings.profitMarginDivisor} />
+          </Suspense>
+        );
       case Page.Settings:
-        return <SettingsPage settings={settings} onSaveSettings={handleSaveSettings} transactions={transactions} inventory={inventory} theme={settings.theme} setTheme={setTheme}/>;
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <SettingsPage settings={settings} onSaveSettings={handleSaveSettings} transactions={transactions} inventory={inventory} theme={settings.theme} setTheme={setTheme}/>
+          </Suspense>
+        );
       default:
-        return <DashboardPage transactions={transactions} inventory={inventory} onNavigate={setCurrentPage}/>;
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <DashboardPage transactions={transactions} inventory={inventory} onNavigate={setCurrentPage}/>
+          </Suspense>
+        );
     }
   };
 
-  const AppHeader: React.FC = () => (
+  const AppHeader: React.FC = React.memo(() => (
     <div className="flex items-center justify-between gap-4 p-4">
       <div className="flex items-center gap-4">
           {settings.storeLogo ? (
@@ -130,9 +160,9 @@ const App: React.FC = () => {
         <SyncStatusIndicator status={overallSyncStatus} />
       </div>
     </div>
-  );
+  ));
   
-  const SideNav: React.FC = () => (
+  const SideNav: React.FC = React.memo(() => (
     <aside className="w-64 bg-card shadow-lg hidden md:flex flex-col border-r border-border">
         <div className="border-b border-border">
           <AppHeader />
@@ -155,7 +185,7 @@ const App: React.FC = () => {
             ))}
         </nav>
     </aside>
-  );
+  ));
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -194,6 +224,14 @@ const App: React.FC = () => {
         
         <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} />
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
   );
 };
 

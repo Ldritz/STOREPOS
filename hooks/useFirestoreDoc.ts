@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { SyncStatus } from '../types';
@@ -12,6 +12,12 @@ function useFirestoreDoc<T>(
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     const [syncStatus, setSyncStatus] = useState<SyncStatus>('syncing');
+    const initialDataRef = useRef(initialData);
+
+    // Update ref when initialData changes
+    useEffect(() => {
+        initialDataRef.current = initialData;
+    }, [initialData]);
 
     useEffect(() => {
         setLoading(true);
@@ -22,8 +28,8 @@ function useFirestoreDoc<T>(
                 setData(docSnap.data() as T);
             } else {
                 console.log(`Document ${collectionName}/${docId} not found, creating with initial data.`);
-                setDoc(docRef, initialData).catch(e => console.error("Error creating document:", e));
-                setData(initialData);
+                setDoc(docRef, initialDataRef.current).catch(e => console.error("Error creating document:", e));
+                setData(initialDataRef.current);
             }
             setLoading(false);
 
@@ -42,7 +48,7 @@ function useFirestoreDoc<T>(
         });
 
         return () => unsubscribe();
-    }, [collectionName, docId, JSON.stringify(initialData)]);
+    }, [collectionName, docId]);
 
     const updateData = useCallback(async (updates: Partial<T>) => {
         const docRef = doc(db, collectionName, docId);
