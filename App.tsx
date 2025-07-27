@@ -1,19 +1,76 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy, useCallback } from 'react';
 import useFirestoreCollection from './hooks/useFirestoreCollection';
 import useFirestoreDoc from './hooks/useFirestoreDoc';
 import { Page, Transaction, InventoryItem, TransactionType, AppSettings, SyncStatus } from './types';
-import DashboardPage from './components/DashboardPage';
-import TransactionsPage from './components/TransactionsPage';
-import InventoryPage from './components/InventoryPage';
-import SettingsPage from './components/SettingsPage';
 import AddTransactionModal from './components/AddTransactionModal';
 import BottomNav from './components/BottomNav';
 import SyncStatusIndicator from './components/SyncStatusIndicator';
 import { ShoppingCartIcon, DashboardIcon, TransactionsIcon, InventoryIcon, OlescoLogo, SettingsIcon } from './components/Icons';
+import { usePerformanceMonitor } from './utils/performance';
+
+// Lazy load page components for better performance
+const DashboardPage = lazy(() => import('./components/DashboardPage'));
+const TransactionsPage = lazy(() => import('./components/TransactionsPage'));
+const InventoryPage = lazy(() => import('./components/InventoryPage'));
+const SettingsPage = lazy(() => import('./components/SettingsPage'));
+
+// Error Boundary Component
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px] p-8">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Something went wrong</h2>
+            <p className="text-muted-foreground mb-4">The page encountered an error while loading.</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Loading Component
+const PageLoading: React.FC = () => (
+  <div className="flex items-center justify-center min-h-[400px] p-8">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+      <p className="text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Dashboard);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { measureAsync } = usePerformanceMonitor();
 
   const { data: settings, updateData: updateSettings, syncStatus: settingsSyncStatus } = useFirestoreDoc<AppSettings>('config', 'settings', {
     storeName: 'Olesco Agrivet Trading',
@@ -31,27 +88,29 @@ const App: React.FC = () => {
     root.classList.add(settings.theme);
   }, [settings.theme]);
 
-  const handleAddTransaction = async (transactionData: Omit<Transaction, 'id'>) => {
-    await addTransaction(transactionData);
-    
-    // For income, decrease stock of sold items based on quantity.
-    if (transactionData.type === TransactionType.Income && transactionData.items) {
-        const stockUpdates = transactionData.items.map(soldItem => {
-            const invItem = inventory.find(i => i.id === soldItem.inventoryItemId);
-            if (invItem) {
-                return {
-                    id: invItem.id,
-                    data: { stock: Math.max(0, invItem.stock - soldItem.quantity) }
-                };
-            }
-            return null;
-        }).filter((i): i is { id: string; data: { stock: number } } => i !== null);
-        
-        if(stockUpdates.length > 0) {
-            await updateMultipleInventoryItems(stockUpdates);
-        }
-    }
-  };
+  const handleAddTransaction = useCallback(async (transactionData: Omit<Transaction, 'id'>) => {
+    await measureAsync('add-transaction', async () => {
+      await addTransaction(transactionData);
+      
+      // For income, decrease stock of sold items based on quantity.
+      if (transactionData.type === TransactionType.Income && transactionData.items) {
+          const stockUpdates = transactionData.items.map(soldItem => {
+              const invItem = inventory.find(i => i.id === soldItem.inventoryItemId);
+              if (invItem) {
+                  return {
+                      id: invItem.id,
+                      data: { stock: Math.max(0, invItem.stock - soldItem.quantity) }
+                  };
+              }
+              return null;
+          }).filter((i): i is { id: string; data: { stock: number } } => i !== null);
+          
+          if(stockUpdates.length > 0) {
+              await updateMultipleInventoryItems(stockUpdates);
+          }
+      }
+    });
+  }, [addTransaction, inventory, updateMultipleInventoryItems, measureAsync]);
 
   const handleDeleteTransaction = async (transaction: Transaction) => {
     if(window.confirm('Are you sure you want to delete this transaction? This action will not restock items.')) {
@@ -74,8 +133,8 @@ const App: React.FC = () => {
      }
   };
 
-  const handleSaveSettings = async (newSettings: AppSettings) => {
-    await updateSettings(newSettings);
+  const handleSaveSettings = async (newSettings: Partial<AppSettings>) => {
+    await updateSettings(newSettings as AppSettings);
   };
   
   const setTheme = (theme: 'light' | 'dark') => {
@@ -89,6 +148,29 @@ const App: React.FC = () => {
     return 'synced';
   }, [settingsSyncStatus, transactionsSyncStatus, inventorySyncStatus]);
   
+  // Memoize page props to prevent unnecessary re-renders
+  const pageProps = useMemo(() => ({
+    transactions,
+    inventory,
+    onNavigate: setCurrentPage,
+    onDeleteTransaction: handleDeleteTransaction,
+    onSaveItem: handleSaveInventoryItem,
+    onDeleteItem: handleDeleteInventoryItem,
+    profitMarginDivisor: settings.profitMarginDivisor,
+    settings,
+    onSaveSettings: handleSaveSettings,
+    theme: settings.theme,
+    setTheme,
+  }), [
+    transactions,
+    inventory,
+    settings,
+    handleDeleteTransaction,
+    handleSaveInventoryItem,
+    handleDeleteInventoryItem,
+    handleSaveSettings,
+  ]);
+  
   const pageInfo: { [key in Page]: { title: string; subtitle?: string } } = {
     [Page.Dashboard]: { title: "Dashboard" },
     [Page.Transactions]: { title: "Transaction History", subtitle: "Review past sales and expenses." },
@@ -97,17 +179,48 @@ const App: React.FC = () => {
   };
 
   const renderPage = () => {
+
     switch (currentPage) {
       case Page.Dashboard:
-        return <DashboardPage transactions={transactions} inventory={inventory} onNavigate={setCurrentPage}/>;
+        return (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoading />}>
+              <DashboardPage {...pageProps} />
+            </Suspense>
+          </ErrorBoundary>
+        );
       case Page.Transactions:
-        return <TransactionsPage transactions={transactions} inventory={inventory} onDeleteTransaction={handleDeleteTransaction}/>;
+        return (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoading />}>
+              <TransactionsPage {...pageProps} />
+            </Suspense>
+          </ErrorBoundary>
+        );
       case Page.Inventory:
-        return <InventoryPage inventory={inventory} onSaveItem={handleSaveInventoryItem} onDeleteItem={handleDeleteInventoryItem} profitMarginDivisor={settings.profitMarginDivisor} />;
+        return (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoading />}>
+              <InventoryPage {...pageProps} />
+            </Suspense>
+          </ErrorBoundary>
+        );
       case Page.Settings:
-        return <SettingsPage settings={settings} onSaveSettings={handleSaveSettings} transactions={transactions} inventory={inventory} theme={settings.theme} setTheme={setTheme}/>;
+        return (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoading />}>
+              <SettingsPage {...pageProps} />
+            </Suspense>
+          </ErrorBoundary>
+        );
       default:
-        return <DashboardPage transactions={transactions} inventory={inventory} onNavigate={setCurrentPage}/>;
+        return (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoading />}>
+              <DashboardPage {...pageProps} />
+            </Suspense>
+          </ErrorBoundary>
+        );
     }
   };
 

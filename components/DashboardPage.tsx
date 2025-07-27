@@ -3,12 +3,15 @@ import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Card from './Card';
 import { Transaction, TransactionType, InventoryItem, Page } from '../types';
-import { TrendingUpIcon, TrendingDownIcon, WalletIcon, WarningIcon } from './Icons';
+import { TrendingUpIcon, TrendingDownIcon, WalletIcon } from './Icons';
+
+
 
 // Chart Component (styling changes for dark theme)
 interface ChartData { name: string; income: number; expense: number; }
 const IncomeExpenseChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
   const formatYAxis = (tick: number) => `₱${tick.toLocaleString()}`;
+  
   return (
     <div className="w-full h-72 md:h-80">
       <ResponsiveContainer>
