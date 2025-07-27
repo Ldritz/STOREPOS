@@ -22,6 +22,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
     const [currentQuantity, setCurrentQuantity] = useState<number>(1);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('ALL');
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -34,6 +35,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
             setCurrentQuantity(1);
             setSearchTerm('');
             setSelectedCategory('ALL');
+            setError(null);
         }
     }, [isOpen]);
 
@@ -115,30 +117,35 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
         const transactionDate = date ? new Date(date).toISOString() : new Date().toISOString();
 
         if (type === TransactionType.Income) {
             if (cart.length > 0) {
                 onAddTransaction({
                     type,
-                    amount: totalAmount,
+                    amount: Math.round(totalAmount),
                     description: autoDescription,
                     date: transactionDate,
                     items: cart.map(c => ({ inventoryItemId: c.itemId, quantity: c.quantity })),
                 });
                 onClose();
+            } else {
+                setError('Please add at least one product to the cart.');
             }
         } else { // Expense
-            const numericAmount = parseFloat(amount);
-            if (description && !isNaN(numericAmount) && numericAmount > 0) {
-                onAddTransaction({
-                    type,
-                    amount: numericAmount,
-                    description,
-                    date: transactionDate,
-                });
-                onClose();
+            const numericAmount = Number(amount);
+            if (!description || isNaN(numericAmount) || numericAmount <= 0) {
+                setError('Please enter a valid amount and description.');
+                return;
             }
+            onAddTransaction({
+                type,
+                amount: Math.round(numericAmount),
+                description,
+                date: transactionDate,
+            });
+            onClose();
         }
     };
     
@@ -282,12 +289,11 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
                 </div>
                 <form id="add-transaction-form" onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
                     <div className="grid grid-cols-2 gap-2 rounded-lg p-1 bg-muted">
-                       <button type="button" onClick={() => handleTypeChange(TransactionType.Income)} className={`py-2 rounded-md font-semibold transition-colors ${type === TransactionType.Income ? 'bg-success text-success-foreground shadow' : 'text-muted-foreground'}`}>Income</button>
-                       <button type="button" onClick={() => handleTypeChange(TransactionType.Expense)} className={`py-2 rounded-md font-semibold transition-colors ${type === TransactionType.Expense ? 'bg-error text-error-foreground shadow' : 'text-muted-foreground'}`}>Expense</button>
+                       <button type="button" onClick={() => setType(TransactionType.Income)} className={`py-2 rounded-md font-semibold transition-colors ${type === TransactionType.Income ? 'bg-success text-success-foreground shadow' : 'text-muted-foreground'}`}>Income</button>
+                       <button type="button" onClick={() => setType(TransactionType.Expense)} className={`py-2 rounded-md font-semibold transition-colors ${type === TransactionType.Expense ? 'bg-error text-error-foreground shadow' : 'text-muted-foreground'}`}>Expense</button>
                     </div>
-                    
+                    {error && <div className="bg-destructive/10 text-destructive border border-destructive/20 rounded-md px-4 py-2 text-sm">{error}</div>}
                     {type === TransactionType.Income ? renderIncomeForm() : renderExpenseForm()}
-
                     <div>
                         <label htmlFor="date" className="block text-sm font-medium text-muted-foreground mb-1">Date</label>
                         <input type="date" id="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full px-3 py-2 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" />
