@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { Transaction, TransactionType, InventoryItem } from '../types';
-import { TrashIcon, ChevronDownIcon, ListBulletIcon, TableCellsIcon } from './Icons';
+import { Transaction, TransactionType, InventoryItem, ExpenseSubtype } from '../types';
+import { TrashIcon, ChevronDownIcon, ListBulletIcon, TableCellsIcon, EditIcon } from './Icons';
 
 const formatCurrency = (amount: number, abs = false) => {
     const value = abs ? Math.abs(amount) : amount;
@@ -44,13 +44,92 @@ const OverviewCard: React.FC<OverviewCardProps> = ({ title, stats }) => (
     </div>
 );
 
+interface TransactionRowProps {
+    transaction: Transaction;
+    inventory: InventoryItem[];
+    onDeleteTransaction: (transaction: Transaction) => void;
+    onEditTransaction: (transaction: Transaction) => void;
+}
+
+const TransactionRow: React.FC<TransactionRowProps> = ({ transaction: t, inventory, onDeleteTransaction, onEditTransaction }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const canExpand = (t.type === TransactionType.Income || (t.type === TransactionType.Expense && t.expenseSubtype === ExpenseSubtype.InventoryPurchase)) && t.items && t.items.length > 0;
+
+    const toggleExpand = () => {
+        if (canExpand) setIsExpanded(!isExpanded);
+    };
+    
+    const totalItems = t.items?.reduce((acc, i) => acc + i.quantity, 0) || 0;
+
+    const itemDetailsButton = (
+         <button onClick={toggleExpand} className="flex items-center justify-end gap-1 text-muted-foreground w-full hover:text-foreground transition-colors">
+            <span className="text-xs">{totalItems} item(s)</span>
+            <ChevronDownIcon className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+        </button>
+    );
+
+    const itemDetailsStatic = (
+        <span className="text-xs text-muted-foreground">{totalItems} item(s)</span>
+    );
+
+    return (
+        <div className="space-y-2">
+            <div className="bg-card border border-border p-4 rounded-lg flex justify-between items-center group">
+                <div className="flex-1 min-w-0 pr-4">
+                     <p className="font-bold text-foreground truncate">{t.name || ''}</p>
+                </div>
+                <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="text-right">
+                        <p className={`font-bold text-lg ${t.type === TransactionType.Income ? 'text-success' : 'text-warning'}`}>
+                            {formatCurrency(t.amount)}
+                        </p>
+                        {canExpand ? itemDetailsButton : (t.items && t.items.length > 0 ? itemDetailsStatic : null)}
+                    </div>
+
+                    <button onClick={() => onEditTransaction(t)} className="text-muted-foreground hover:text-info transition-colors opacity-0 group-hover:opacity-100">
+                        <EditIcon className="w-5 h-5"/>
+                    </button>
+                    <button onClick={() => onDeleteTransaction(t)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100">
+                        <TrashIcon className="w-5 h-5"/>
+                    </button>
+                </div>
+            </div>
+            {isExpanded && canExpand && (
+                <div className="bg-secondary p-4 rounded-b-lg animate-fade-in border border-border border-t-0">
+                    <h5 className="font-semibold mb-2 text-secondary-foreground">
+                        {t.type === TransactionType.Income ? 'Items Sold' : 'Items Purchased'}
+                    </h5>
+                    <ul className="space-y-2 text-sm">
+                        {t.items?.map(item => {
+                            const invItem = inventory.find(i => i.id === item.inventoryItemId);
+                            if (!invItem) return null;
+                            const subtotal = invItem.price * item.quantity;
+                            return (
+                                <li key={item.inventoryItemId} className="flex justify-between items-center">
+                                    <div>
+                                      <span className="text-muted-foreground">{invItem.name} </span> 
+                                      <span className="text-xs text-muted-foreground/70">(x{item.quantity})</span>
+                                    </div>
+                                    <span className="font-mono text-foreground">{formatCurrency(subtotal)}</span>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 // --- Cashbook Components ---
 interface CashbookRowData {
     id: string;
-    description: string;
+    name: string;
+    note?: string;
     income: number | null;
     expense: number | null;
+    items?: { name: string; quantity: number; unit: string }[];
 }
 interface GroupedCashbookData {
     [date: string]: {
@@ -72,7 +151,7 @@ const CashbookTable: React.FC<CashbookTableProps> = ({ data, sortedDateKeys }) =
                     <thead className="text-xs text-muted-foreground uppercase bg-secondary">
                         <tr>
                             <th scope="col" className="px-4 py-3">Date</th>
-                            <th scope="col" className="px-4 py-3 min-w-[250px]">Description</th>
+                            <th scope="col" className="px-4 py-3 min-w-[250px]">Name</th>
                             <th scope="col" className="px-4 py-3 text-right">Income (Credit)</th>
                             <th scope="col" className="px-4 py-3 text-right">Expense (Debit)</th>
                         </tr>
@@ -87,7 +166,25 @@ const CashbookTable: React.FC<CashbookTableProps> = ({ data, sortedDateKeys }) =
                                             <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
                                                 {index === 0 ? new Date(dateKey + 'T00:00:00').toLocaleDateString('en-CA') : ''}
                                             </td>
-                                            <td className="px-4 py-3">{row.description}</td>
+                                            <td className="px-4 py-3">
+                                                {row.note ? (
+                                                    <div>
+                                                        <div className="font-medium text-foreground">{row.note}</div>
+                                                        <div className="text-sm text-muted-foreground">{row.name}</div>
+                                                    </div>
+                                                ) : (
+                                                    <div>{row.name}</div>
+                                                )}
+                                                {row.items && row.items.length > 0 && (
+                                                    <ul className="text-xs text-muted-foreground/80 mt-1 pl-4 list-disc">
+                                                        {row.items.map((item, itemIndex) => (
+                                                            <li key={itemIndex}>
+                                                                {item.quantity} {item.unit} - {item.name}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3 text-right font-mono text-success">{row.income ? formatCurrency(row.income) : '-'}</td>
                                             <td className="px-4 py-3 text-right font-mono text-warning">{row.expense ? formatCurrency(row.expense) : '-'}</td>
                                         </tr>
@@ -121,9 +218,10 @@ interface TransactionsPageProps {
   transactions: Transaction[];
   inventory: InventoryItem[];
   onDeleteTransaction: (transaction: Transaction) => void;
+  onEditTransaction: (transaction: Transaction) => void;
 }
 
-const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDeleteTransaction }) => {
+const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, inventory, onDeleteTransaction, onEditTransaction }) => {
     const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
     const [viewMode, setViewMode] = useState<'list' | 'cashbook'>('list');
 
@@ -137,13 +235,18 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
 
         let todaysIncome = 0, weeklyIncome = 0, totalIncome = 0;
         let todaysExpenses = 0, weeklyExpenses = 0, totalExpenses = 0;
-        let firstTransactionDate: Date | null = null;
+
+        if (transactions.length === 0) {
+            return {
+                incomeStats: { today: 0, thisWeek: 0, allTime: 0, avgWeek: 0, avgAllTime: 0 },
+                expenseStats: { today: 0, thisWeek: 0, allTime: 0, avgWeek: 0, avgAllTime: 0 }
+            };
+        }
         
         const sortedTransactions = [...transactions].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         sortedTransactions.forEach(t => {
             const tDate = new Date(t.date);
-            if (!firstTransactionDate) firstTransactionDate = tDate;
 
             if (t.type === TransactionType.Income) {
                 totalIncome += t.amount;
@@ -156,9 +259,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
             }
         });
         
-        const dayDiff = firstTransactionDate 
-            ? Math.ceil((now.getTime() - firstTransactionDate.getTime()) / (1000 * 3600 * 24)) 
-            : 1;
+        const firstTransactionDate = new Date(sortedTransactions[0].date);
+        const dayDiff = Math.ceil((now.getTime() - firstTransactionDate.getTime()) / (1000 * 3600 * 24));
         const daysToAvg = dayDiff > 0 ? dayDiff : 1;
 
         return {
@@ -178,12 +280,41 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
                 groups[dateStr] = { transactions: [], totalIncome: 0, totalExpense: 0 };
             }
             
-            groups[dateStr].transactions.push({
+            let itemsInfo;
+             if (t.items && (t.type === TransactionType.Income || t.expenseSubtype === ExpenseSubtype.InventoryPurchase)) {
+                itemsInfo = t.items.map(item => {
+                    const inventoryItem = inventory.find(i => i.id === item.inventoryItemId);
+                    return {
+                        name: inventoryItem?.name || 'Unknown Item',
+                        quantity: item.quantity,
+                        unit: inventoryItem?.unit || '',
+                    };
+                });
+            }
+
+            const row: CashbookRowData = {
                 id: t.id,
-                description: t.description,
+                name: t.name || '',
                 income: t.type === TransactionType.Income ? t.amount : null,
                 expense: t.type === TransactionType.Expense ? t.amount : null,
-            });
+                items: itemsInfo,
+            };
+
+            if (t.expenseSubtype === ExpenseSubtype.InventoryPurchase && t.name) {
+                const autoName = ' - Inventory Purchase';
+                const suffixRegex = / #\w{5}$/;
+                const nameWithoutSuffix = t.name.replace(suffixRegex, '');
+
+                if (nameWithoutSuffix.includes(autoName)) {
+                    const notePart = nameWithoutSuffix.split(autoName)[0];
+                    if (notePart) {
+                        row.note = notePart;
+                        row.name = t.name.substring(notePart.length + 3);
+                    }
+                }
+            }
+
+            groups[dateStr].transactions.push(row);
 
             if (t.type === TransactionType.Income) {
                 groups[dateStr].totalIncome += t.amount;
@@ -194,8 +325,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
         
         for (const dateKey in groups) {
             groups[dateKey].transactions.sort((a,b) => {
-                const transactionA = transactions.find(t => t.id === a.id)!;
-                const transactionB = transactions.find(t => t.id === b.id)!;
+                const transactionA = transactions.find(t => t.id === a.id);
+                const transactionB = transactions.find(t => t.id === b.id);
+                if (!transactionA || !transactionB) return 0;
                 return new Date(transactionA.date).getTime() - new Date(transactionB.date).getTime();
             });
         }
@@ -204,7 +336,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
 
 
         return { groupedCashbookData: groups, sortedCashbookDateKeys: sortedKeys };
-    }, [transactions, filterType]);
+    }, [transactions, filterType, inventory]);
 
     const groupedTransactions = useMemo(() => {
         return transactions
@@ -252,11 +384,21 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
                     ))}
                 </div>
                  <div className="flex items-center gap-1 bg-secondary p-1 rounded-lg">
-                    <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} aria-label="List View">
+                    <button 
+                        onClick={() => setViewMode('list')} 
+                        className={`px-3 py-1.5 flex items-center gap-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} 
+                        aria-label="List View"
+                    >
                         <ListBulletIcon className="w-5 h-5"/>
+                        <span>List</span>
                     </button>
-                    <button onClick={() => setViewMode('cashbook')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'cashbook' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} aria-label="Cashbook View">
+                    <button 
+                        onClick={() => setViewMode('cashbook')} 
+                        className={`px-3 py-1.5 flex items-center gap-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'cashbook' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} 
+                        aria-label="Cashbook View"
+                    >
                         <TableCellsIcon className="w-5 h-5"/>
+                        <span>Cashbook</span>
                     </button>
                 </div>
             </div>
@@ -285,30 +427,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onDel
                                 
                                 <div className="space-y-2">
                                     {dailyTransactions.map(t => (
-                                        <div key={t.id} className="bg-card border border-border p-4 rounded-lg flex justify-between items-center group">
-                                            <div className="flex-1 min-w-0 pr-4">
-                                                 <p className="font-bold text-foreground truncate">{t.description}</p>
-                                                 <p className="text-sm text-muted-foreground">{new Date(t.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2 sm:gap-4">
-                                                {t.type === TransactionType.Income ? (
-                                                    <div className="text-right">
-                                                        <p className="font-bold text-lg text-success">{formatCurrency(t.amount)}</p>
-                                                        {t.items && t.items.length > 0 && 
-                                                          <div className="flex items-center justify-end gap-1 text-muted-foreground">
-                                                            <span className="text-xs">{t.items?.reduce((acc, i) => acc + i.quantity, 0) || 1} item(s)</span>
-                                                            <ChevronDownIcon className="w-4 h-4" />
-                                                          </div>
-                                                        }
-                                                    </div>
-                                                ) : (
-                                                    <p className="font-bold text-lg text-warning">{formatCurrency(t.amount)}</p>
-                                                )}
-                                                <button onClick={() => onDeleteTransaction(t)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100">
-                                                    <TrashIcon className="w-5 h-5"/>
-                                                </button>
-                                            </div>
-                                        </div>
+                                        <TransactionRow 
+                                            key={t.id}
+                                            transaction={t} 
+                                            inventory={inventory}
+                                            onDeleteTransaction={onDeleteTransaction}
+                                            onEditTransaction={onEditTransaction}
+                                        />
                                     ))}
                                 </div>
                             </div>

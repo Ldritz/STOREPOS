@@ -1,70 +1,49 @@
-import { useState, useEffect, useCallback } from 'react';
+
+import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
-import { SyncStatus } from '../types';
+import { doc, onSnapshot, DocumentSnapshot, DocumentData } from '@firebase/firestore';
 
-function useFirestoreDoc<T>(
-    collectionName: string,
-    docId: string,
-    initialData: T
-) {
-    const [data, setData] = useState<T>(initialData);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
-    const [syncStatus, setSyncStatus] = useState<SyncStatus>('syncing');
-
-    useEffect(() => {
-        setLoading(true);
-        const docRef = doc(db, collectionName, docId);
-
-        const unsubscribe = onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setData(docSnap.data() as T);
-            } else {
-                console.log(`Document ${collectionName}/${docId} not found, creating with initial data.`);
-                setDoc(docRef, initialData).catch(e => console.error("Error creating document:", e));
-                setData(initialData);
-            }
-            setLoading(false);
-
-            if (docSnap.metadata.hasPendingWrites) {
-                setSyncStatus('syncing');
-            } else if (docSnap.metadata.fromCache) {
-                setSyncStatus('offline');
-            } else {
-                setSyncStatus('synced');
-            }
-        }, (err) => {
-            console.error(err);
-            setError(err);
-            setLoading(false);
-            setSyncStatus('offline');
-        });
-
-        return () => unsubscribe();
-    }, [collectionName, docId, JSON.stringify(initialData)]);
-
-    const updateData = useCallback(async (updates: Partial<T>) => {
-        const docRef = doc(db, collectionName, docId);
-        try {
-            await updateDoc(docRef, updates);
-        } catch (e) {
-            console.error("Error updating document: ", e);
-            throw e;
-        }
-    }, [collectionName, docId]);
-    
-    const setDataDoc = useCallback(async (newData: T) => {
-        const docRef = doc(db, collectionName, docId);
-        try {
-            await setDoc(docRef, newData);
-        } catch (e) {
-            console.error("Error setting document: ", e);
-            throw e;
-        }
-    }, [collectionName, docId]);
-
-    return { data, loading, error, syncStatus, updateData, setData: setDataDoc };
+interface FirestoreDoc<T> {
+  data: T | null;
+  loading: boolean;
+  error: Error | null;
 }
 
-export default useFirestoreDoc;
+export default function useFirestoreDoc<T>(path: string): FirestoreDoc<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!path) {
+        setLoading(false);
+        return;
+    };
+
+    const docRef = doc(db, path);
+
+    const unsubscribe = onSnapshot(docRef, (snapshot: DocumentSnapshot<DocumentData>) => {
+      if (snapshot.exists()) {
+        try {
+            setData({ id: snapshot.id, ...snapshot.data() } as unknown as T);
+            setError(null);
+        } catch (e: any) {
+            console.error("Error processing document snapshot: ", e);
+            setError(e);
+        }
+      } else {
+        // Doc doesn't exist. This isn't an error, but data is null.
+        setData(null);
+      }
+      setLoading(false);
+    }, (err) => {
+      console.error("Firestore document snapshot error: ", err);
+      setError(err);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [path]);
+
+  return { data, loading, error };
+}

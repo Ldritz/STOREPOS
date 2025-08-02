@@ -1,9 +1,8 @@
-
 import React, { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Card from './Card';
 import { Transaction, TransactionType, InventoryItem, Page } from '../types';
-import { TrendingUpIcon, TrendingDownIcon, WalletIcon, WarningIcon } from './Icons';
+import { TrendingUpIcon, TrendingDownIcon, WalletIcon } from './Icons';
 
 // Chart Component (styling changes for dark theme)
 interface ChartData { name: string; income: number; expense: number; }
@@ -12,12 +11,12 @@ const IncomeExpenseChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
   return (
     <div className="w-full h-72 md:h-80">
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={formatYAxis} />
+        <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={true} vertical={false}/>
+          <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={formatYAxis} tickLine={false} axisLine={false} />
           <Tooltip
-            cursor={{ fill: 'hsl(var(--accent))' }}
+            cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1.5, strokeDasharray: '3 3' }}
             contentStyle={{
               backgroundColor: 'hsl(var(--popover))',
               borderColor: 'hsl(var(--border))',
@@ -26,10 +25,26 @@ const IncomeExpenseChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
             }}
              labelStyle={{ fontWeight: 'bold' }}
           />
-          <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }}/>
-          <Bar dataKey="income" fill="hsl(var(--success))" name="Income" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="expense" fill="hsl(var(--warning))" name="Expense" radius={[4, 4, 0, 0]} />
-        </BarChart>
+          <Legend wrapperStyle={{ color: 'hsl(var(--foreground))', paddingTop: '10px' }}/>
+          <Line 
+            type="monotone" 
+            dataKey="income" 
+            stroke="hsl(var(--success))" 
+            strokeWidth={2.5} 
+            name="Income"
+            dot={false}
+            activeDot={{ r: 6, strokeWidth: 2, fill: 'hsl(var(--background))', stroke: 'hsl(var(--success))' }} 
+          />
+          <Line 
+            type="monotone" 
+            dataKey="expense" 
+            stroke="hsl(var(--warning))" 
+            strokeWidth={2.5} 
+            name="Expense"
+            dot={false}
+            activeDot={{ r: 6, strokeWidth: 2, fill: 'hsl(var(--background))', stroke: 'hsl(var(--warning))' }}
+          />
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );
@@ -41,14 +56,18 @@ interface StatCardProps {
   amount: number;
   Icon: React.ElementType;
   iconClass: string;
+  isToday?: boolean;
 }
-const StatCard: React.FC<StatCardProps> = ({ title, amount, Icon, iconClass }) => (
+const StatCard: React.FC<StatCardProps> = ({ title, amount, Icon, iconClass, isToday }) => (
     <div className="bg-card border border-border p-4 rounded-lg flex justify-between items-center">
         <div>
             <p className="text-sm text-muted-foreground font-medium">{title}</p>
             <p className="text-2xl lg:text-3xl font-bold text-foreground mt-1">
                 {amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
             </p>
+             {isToday && amount === 0 && (
+              <p className="text-xs text-muted-foreground mt-1">No transactions for today yet.</p>
+            )}
         </div>
         <div className={`p-3 rounded-md ${iconClass}`}>
             <Icon className="w-8 h-8" />
@@ -62,15 +81,19 @@ interface LowStockAlertsProps {
   onNavigate: (page: Page) => void;
 }
 const LowStockAlerts: React.FC<LowStockAlertsProps> = ({ inventory, onNavigate }) => {
-    const lowStockItems = inventory.filter(item => item.stock <= 5);
+    const lowStockItems = inventory.filter(item => item.stock <= 5 && !item.isDisabled);
+    const hasLowStock = lowStockItems.length > 0;
 
     return (
-        <Card title="Low Stock Alerts" actions={
-             <button onClick={() => onNavigate(Page.Inventory)} className="text-sm text-primary font-semibold hover:underline">
-                Manage &rarr;
-            </button>
-        }>
-            {lowStockItems.length > 0 ? (
+        <Card 
+            title="Low Stock Alerts" 
+            className={hasLowStock ? 'animate-flash-warning' : ''}
+            actions={
+                <button onClick={() => onNavigate(Page.Inventory)} className="text-sm text-primary font-semibold hover:underline">
+                    Manage &rarr;
+                </button>
+            }>
+            {hasLowStock ? (
                 <div className='h-72 overflow-y-auto pr-2'>
                     <ul className="space-y-2">
                         {lowStockItems.slice(0, 5).map(item => (
@@ -82,7 +105,7 @@ const LowStockAlerts: React.FC<LowStockAlertsProps> = ({ inventory, onNavigate }
                     </ul>
                 </div>
             ) : (
-                <div className="text-center text-muted-foreground">
+                <div className="text-center text-muted-foreground h-72 flex flex-col justify-center items-center">
                     <p className="font-semibold">No low stock items.</p>
                     <p className="text-sm">Well done!</p>
                 </div>
@@ -95,6 +118,14 @@ const LowStockAlerts: React.FC<LowStockAlertsProps> = ({ inventory, onNavigate }
 interface TopProductsChartProps {
     data: { name: string; revenue: number }[];
 }
+const COLORS = [
+    'hsl(var(--info))', 
+    'hsl(var(--success))', 
+    'hsl(var(--warning))', 
+    'hsl(var(--destructive))', 
+    'hsl(260, 70%, 60%)' // A nice purple
+];
+
 const TopProductsChart: React.FC<TopProductsChartProps> = ({ data }) => {
     const formatCurrency = (value: number) => `₱${value.toLocaleString()}`;
     return (
@@ -102,30 +133,42 @@ const TopProductsChart: React.FC<TopProductsChartProps> = ({ data }) => {
             <div className="w-full h-72">
                 {data.length > 0 ? (
                     <ResponsiveContainer>
-                        <BarChart layout="vertical" data={data} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={formatCurrency} />
-                            <YAxis
-                                type="category"
-                                dataKey="name"
-                                stroke="hsl(var(--muted-foreground))"
-                                fontSize={12}
-                                width={100}
-                                tickFormatter={(value: string) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
-                                tick={{ textAnchor: 'end' }}
-                            />
+                        <PieChart>
+                            <Pie
+                                data={data}
+                                cx="50%"
+                                cy="45%"
+                                labelLine={false}
+                                outerRadius="80%"
+                                fill="#8884d8"
+                                dataKey="revenue"
+                                nameKey="name"
+                            >
+                                {data.map((_, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke={'hsl(var(--background))'} strokeWidth={2}/>
+                                ))}
+                            </Pie>
                             <Tooltip
-                                cursor={{ fill: 'hsl(var(--accent))' }}
                                 contentStyle={{
                                     backgroundColor: 'hsl(var(--popover))',
                                     borderColor: 'hsl(var(--border))',
                                     borderRadius: '0.5rem',
                                     color: 'hsl(var(--popover-foreground))'
                                 }}
-                                formatter={(value: number) => formatCurrency(value)}
+                                formatter={(value: number | string) => [typeof value === 'number' ? formatCurrency(value) : value, 'Revenue']}
                             />
-                            <Bar dataKey="revenue" name="Revenue" fill="hsl(var(--info))" radius={[0, 4, 4, 0]} barSize={20} />
-                        </BarChart>
+                            <Legend 
+                                iconSize={12} 
+                                layout="horizontal" 
+                                verticalAlign="bottom" 
+                                align="center"
+                                wrapperStyle={{ 
+                                    color: 'hsl(var(--foreground))', 
+                                    fontSize: '14px',
+                                    paddingTop: '20px'
+                                }}
+                            />
+                        </PieChart>
                     </ResponsiveContainer>
                 ) : (
                     <div className="h-full flex items-center justify-center text-muted-foreground text-center">
@@ -178,6 +221,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, inventory, 
         let ti = 0, te = 0, totalInc = 0, totalExp = 0;
 
         const monthlyData: { [key: string]: { income: number; expense: number } } = {};
+        const currentDate = new Date();
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+            const monthKey = d.toLocaleString('default', { month: 'short', year: 'numeric' });
+            monthlyData[monthKey] = { income: 0, expense: 0 };
+        }
+
         const productRevenue: Record<string, { name: string; revenue: number }> = {};
         
         transactions.forEach(t => {
@@ -208,18 +258,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, inventory, 
             }
 
             const month = new Date(t.date).toLocaleString('default', { month: 'short', year: 'numeric' });
-            if (!monthlyData[month]) monthlyData[month] = { income: 0, expense: 0 };
-            if (t.type === TransactionType.Income) monthlyData[month].income += t.amount;
-            else monthlyData[month].expense += t.amount;
+            if (monthlyData[month]) {
+                if (t.type === TransactionType.Income) monthlyData[month].income += t.amount;
+                else monthlyData[month].expense += t.amount;
+            }
         });
 
-        const sortedMonths = Object.keys(monthlyData).sort((a,b) => new Date(a).getTime() - new Date(b).getTime()).slice(-6);
-        const data: ChartData[] = sortedMonths.map(month => ({ name: new Date(month).toLocaleString('default', {month: 'short'}), ...monthlyData[month] }));
+        const data: ChartData[] = Object.keys(monthlyData).map(monthKey => ({ 
+            name: `${new Date(monthKey).toLocaleString('default', {month: 'short'})} '${new Date(monthKey).getFullYear().toString().slice(2)}`,
+            ...monthlyData[monthKey] 
+        }));
 
         const sortedProducts = Object.values(productRevenue)
             .sort((a, b) => b.revenue - a.revenue)
-            .slice(0, 5)
-            .reverse();
+            .slice(0, 5);
 
         return {
             todaysIncome: ti,
@@ -235,8 +287,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, inventory, 
     return (
         <div className="space-y-6 animate-fade-in">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <StatCard title="TODAY'S INCOME" amount={todaysIncome} Icon={TrendingUpIcon} iconClass="bg-success text-success-foreground" />
-                <StatCard title="TODAY'S EXPENSES" amount={todaysExpenses} Icon={TrendingDownIcon} iconClass="bg-warning text-warning-foreground" />
+                <StatCard title="TODAY'S INCOME" amount={todaysIncome} Icon={TrendingUpIcon} iconClass="bg-success text-success-foreground" isToday />
+                <StatCard title="TODAY'S EXPENSES" amount={todaysExpenses} Icon={TrendingDownIcon} iconClass="bg-warning text-warning-foreground" isToday />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -253,7 +305,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, inventory, 
                         <p className="text-sm">Add some transactions to get started!</p>
                     </div>
                 )}
-            </Card>
+            </Card>s
 
             <div className="space-y-4">
                 <SummaryRow title="TOTAL INCOME" amount={totalIncome} Icon={TrendingUpIcon} iconClass="bg-success text-success-foreground" />
