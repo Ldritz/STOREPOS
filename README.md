@@ -1,5 +1,5 @@
 
-# Olesco Agrivet Trading
+# POS WEB APP
 
 A simple and beautiful cashbook and inventory management application built with React, TypeScript, and Tailwind CSS. It uses Firebase Firestore for real-time data persistence and offline capabilities, and Cloudinary for image storage.
 
