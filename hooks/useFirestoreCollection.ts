@@ -1,105 +1,54 @@
-import { useState, useEffect, useCallback } from 'react';
+
+import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, orderBy, writeBatch, getDocs, where, WhereFilterOp } from 'firebase/firestore';
-import { SyncStatus } from '../types';
+import { collection, onSnapshot, QuerySnapshot, DocumentData, Query } from '@firebase/firestore';
 
-export interface FirestoreQuery {
-    field: string;
-    operator: WhereFilterOp;
-    value: any;
+interface FirestoreCollection<T> {
+  data: T[];
+  loading: boolean;
+  error: Error | null;
 }
 
-function useFirestoreCollection<T extends { id: string }>(
-    collectionName: string,
-    defaultSortField?: string,
-    defaultSortDirection: 'asc' | 'desc' = 'asc',
-    queries: FirestoreQuery[] = []
-) {
-    const [data, setData] = useState<T[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
-    const [syncStatus, setSyncStatus] = useState<SyncStatus>('syncing');
+export default function useFirestoreCollection<T>(pathOrQuery: string | Query): FirestoreCollection<T> {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
 
-    useEffect(() => {
-        setLoading(true);
+  // The query object changes on every render, stringifying it for the dependency array
+  const queryKey = typeof pathOrQuery === 'string' ? pathOrQuery : JSON.stringify(pathOrQuery);
 
-        const collectionRef = collection(db, collectionName);
-        const queryConstraints = queries.map(q => where(q.field, q.operator, q.value));
-        if (defaultSortField) {
-            queryConstraints.push(orderBy(defaultSortField, defaultSortDirection));
-        }
+  useEffect(() => {
+    const collectionRef = typeof pathOrQuery === 'string' ? collection(db, pathOrQuery) : pathOrQuery;
 
-        const q = query(collectionRef, ...queryConstraints);
-
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const collectionData: T[] = [];
-            querySnapshot.forEach((doc) => {
-                collectionData.push({ id: doc.id, ...doc.data() } as T);
-            });
-            setData(collectionData);
-            setLoading(false);
-
-            if (querySnapshot.metadata.hasPendingWrites) {
-                setSyncStatus('syncing');
-            } else if (querySnapshot.metadata.fromCache) {
-                setSyncStatus('offline');
-            } else {
-                setSyncStatus('synced');
-            }
-        }, (err) => {
-            console.error(err);
-            setError(err);
-            setLoading(false);
-            setSyncStatus('offline');
+    const unsubscribe = onSnapshot(collectionRef, (snapshot: QuerySnapshot<DocumentData>) => {
+      try {
+        const collectionData = snapshot.docs.map(doc => {
+          const docData = doc.data();
+          // Firestore timestamps need to be converted to strings to be serializable
+          if (docData.date && typeof docData.date.toDate === 'function') {
+            docData.date = docData.date.toDate().toISOString();
+          }
+          return {
+            id: doc.id,
+            ...docData,
+          } as unknown as T;
         });
+        setData(collectionData);
+        setError(null);
+      } catch (e: any) {
+         console.error("Error processing snapshot: ", e);
+         setError(e);
+      }
+      setLoading(false);
+    }, (err) => {
+      console.error("Firestore snapshot error: ", err);
+      setError(err);
+      setLoading(false);
+    });
 
-        return () => unsubscribe();
-    }, [collectionName, defaultSortField, defaultSortDirection, JSON.stringify(queries)]);
+    return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey]);
 
-    const addItem = useCallback(async (item: Omit<T, 'id'>) => {
-        try {
-            await addDoc(collection(db, collectionName), item);
-        } catch (e) {
-            console.error("Error adding document: ", e);
-            throw e;
-        }
-    }, [collectionName]);
-
-    const updateItem = useCallback(async (id: string, updates: Partial<Omit<T, 'id'>>) => {
-        const docRef = doc(db, collectionName, id);
-        try {
-            await updateDoc(docRef, updates);
-        } catch (e) {
-            console.error("Error updating document: ", e);
-            throw e;
-        }
-    }, [collectionName]);
-
-    const deleteItem = useCallback(async (id: string) => {
-        const docRef = doc(db, collectionName, id);
-        try {
-            await deleteDoc(docRef);
-        } catch (e) {
-            console.error("Error deleting document: ", e);
-            throw e;
-        }
-    }, [collectionName]);
-
-    const updateMultipleItems = useCallback(async (updates: { id: string; data: Partial<Omit<T, 'id'>> }[]) => {
-        const batch = writeBatch(db);
-        updates.forEach(update => {
-            const docRef = doc(db, collectionName, update.id);
-            batch.update(docRef, update.data);
-        });
-        try {
-            await batch.commit();
-        } catch(e) {
-            console.error("Error batch updating documents: ", e);
-            throw e;
-        }
-    }, [collectionName]);
-
-    return { data, loading, error, syncStatus, addItem, updateItem, deleteItem, updateMultipleItems };
+  return { data, loading, error };
 }
-
-export default useFirestoreCollection;

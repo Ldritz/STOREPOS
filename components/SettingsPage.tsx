@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { AppSettings, Transaction, InventoryItem } from '../types';
+import { AppSettings, Transaction, InventoryItem, LastActionBackup } from '../types';
 import Card from './Card';
-import { UploadIcon, DownloadIcon, ImageIcon, SunIcon, MoonIcon } from './Icons';
+import { UploadIcon, ImageIcon, SunIcon, MoonIcon, WarningIcon } from './Icons';
+import { uploadToCloudinary } from '../cloudinary';
 
 interface SettingsPageProps {
   settings: AppSettings;
@@ -10,12 +11,31 @@ interface SettingsPageProps {
   inventory: InventoryItem[];
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
+  onRefreshIncomeTransactionNames: () => Promise<void>;
+  onRecalculateInventory: () => Promise<void>;
+  onBulkPriceUpdate: () => Promise<void>;
+  onBulkStockUpdate: () => Promise<void>;
+  onOrphanedDataCleanup: () => void;
+  onGenerateFinancialReport: () => void;
+  onProfitabilityAnalysis: () => void;
+  lastActionBackup: LastActionBackup | null;
+  onUndoLastAction: () => Promise<void>;
 }
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onSaveSettings, transactions, inventory, theme, setTheme }) => {
+const SettingsPage: React.FC<SettingsPageProps> = (props) => {
+  const { 
+      settings, onSaveSettings, theme, setTheme,
+      onRefreshIncomeTransactionNames, onRecalculateInventory, onBulkPriceUpdate,
+      onBulkStockUpdate, onOrphanedDataCleanup, onGenerateFinancialReport,
+      onProfitabilityAnalysis, lastActionBackup, onUndoLastAction
+  } = props;
+  
   const [storeName, setStoreName] = useState(settings.storeName);
   const [storeLogo, setStoreLogo] = useState(settings.storeLogo);
   const [profitDivisor, setProfitDivisor] = useState(settings.profitMarginDivisor.toString());
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -23,13 +43,38 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onSaveSettings, t
     setStoreName(settings.storeName);
     setStoreLogo(settings.storeLogo);
     setProfitDivisor(settings.profitMarginDivisor.toString());
+    setLogoFile(null);
   }, [settings]);
+  
+  const handleToolClick = async (action: () => Promise<void> | void, actionName: string) => {
+      setLoadingAction(actionName);
+      await action();
+      setLoadingAction(null);
+  };
+  
+  const handleUndoClick = async () => {
+      setLoadingAction('undo');
+      await onUndoLastAction();
+      setLoadingAction(null);
+  };
 
-  const handleStoreInfoSave = () => {
+  const handleStoreInfoSave = async () => {
+    setIsUploading(true);
+    let finalLogoUrl = storeLogo;
+    if (logoFile) {
+        try {
+            finalLogoUrl = await uploadToCloudinary(logoFile);
+        } catch(error) {
+            setIsUploading(false);
+            return;
+        }
+    }
     onSaveSettings({
       storeName,
-      storeLogo,
+      storeLogo: finalLogoUrl,
     });
+    setLogoFile(null);
+    setIsUploading(false);
     alert('Store information saved!');
   };
 
@@ -48,6 +93,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onSaveSettings, t
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setLogoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setStoreLogo(reader.result as string);
@@ -56,39 +102,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onSaveSettings, t
     }
   };
 
-  const handleExport = () => {
-    if (transactions.length === 0) {
-      alert('No transactions to export.');
-      return;
-    }
-    
-    const inventoryMap = new Map(inventory.map(i => [i.id, i.name]));
-    
-    const headers = ['ID', 'Date', 'Type', 'Description', 'Amount', 'Items Sold'];
-    const csvRows = [headers.join(',')];
-
-    for (const t of transactions) {
-      const itemsSold = t.items?.map(i => {
-        const itemName = inventoryMap.get(i.inventoryItemId) || 'Unknown Item';
-        return `${itemName} (x${i.quantity})`;
-      }).join('; ') || '';
-      
-      const row = [t.id, t.date, t.type, `"${t.description.replace(/"/g, '""')}"`, t.amount, `"${itemsSold}"`];
-      csvRows.push(row.join(','));
-    }
-
-    const csvString = csvRows.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `olesco-export-${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-  
   const profitMarginPercentage = () => {
     const divisor = parseFloat(profitDivisor);
     if (!isNaN(divisor) && divisor > 0 && divisor < 1) {
@@ -97,9 +110,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onSaveSettings, t
     return 'Invalid divisor';
   }
 
-  const inputClass = "w-full px-3 py-2 bg-background border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
+  const inputClass = "w-full px-3 py-2 bg-background border border-input rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
   const labelClass = "block text-sm font-medium text-muted-foreground mb-1.5";
-  const buttonClass = "bg-primary text-primary-foreground font-bold py-2 px-6 rounded-lg hover:bg-primary/90 transition-colors";
+  const buttonClass = "bg-primary text-primary-foreground font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50";
+  const toolButtonClass = "flex-shrink-0 bg-secondary text-secondary-foreground font-semibold py-2 px-4 rounded-lg hover:bg-muted transition-colors border border-border disabled:opacity-50 disabled:cursor-not-allowed";
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -152,8 +166,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onSaveSettings, t
             </div>
           </div>
           <div className="flex justify-end">
-            <button onClick={handleStoreInfoSave} className={buttonClass}>
-              Save Changes
+            <button onClick={handleStoreInfoSave} className={buttonClass} disabled={isUploading}>
+              {isUploading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>
@@ -168,24 +182,110 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onSaveSettings, t
             <p className="text-xs text-muted-foreground mt-1">This value is used to calculate selling price (`Cost / Divisor`). A divisor of {profitDivisor || '...'} results in a {profitMarginPercentage()}.</p>
           </div>
           <div className="flex justify-end">
-            <button onClick={handlePricingSave} className="bg-secondary text-secondary-foreground font-bold py-2 px-6 rounded-lg hover:bg-muted transition-colors border border-border">
+            <button onClick={handlePricingSave} className="bg-secondary text-secondary-foreground font-semibold py-2 px-4 rounded-lg hover:bg-muted transition-colors border border-border">
               Save Margin
             </button>
           </div>
         </div>
       </Card>
+        
+      {lastActionBackup && (
+          <Card title="Undo Last Action" variant="glass">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Last action:</p>
+                  <p className="font-semibold">{lastActionBackup.description}</p>
+                </div>
+                <button onClick={handleUndoClick} disabled={!!loadingAction} className={toolButtonClass}>
+                   {loadingAction === 'undo' ? "Undoing..." : "Undo"}
+                </button>
+              </div>
+          </Card>
+      )}
 
-      <Card title="Data Management">
-        <div className="space-y-2">
-          <h4 className="font-semibold text-card-foreground">Export Data</h4>
-          <p className="text-sm text-muted-foreground">Export all sales and expenses to a CSV file.</p>
-          <div className="flex justify-end pt-2">
-            <button onClick={handleExport} className="flex items-center gap-2 bg-secondary text-secondary-foreground font-bold py-2 px-4 rounded-lg hover:bg-muted transition-colors border border-border">
-              <DownloadIcon className="w-5 h-5" />
-              <span>Export All Data</span>
-            </button>
-          </div>
+      <Card title="Experimental Features" variant="secondary">
+        <div className="p-3 mb-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3">
+            <WarningIcon className="w-8 h-8 text-destructive flex-shrink-0" />
+            <div>
+                <h4 className="font-bold text-destructive">Warning</h4>
+                <p className="text-xs text-destructive/80">These tools perform powerful, bulk operations on your data. While some actions can be undone, proceed with caution.</p>
+            </div>
         </div>
+        <div className="space-y-4">
+            {/* Tool Row */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h4 className="font-semibold text-card-foreground">Full Inventory Recalculation</h4>
+                    <p className="text-sm text-muted-foreground">Recalculates all item stocks based on your entire transaction history. Overwrites manual stock edits.</p>
+                </div>
+                <button onClick={() => handleToolClick(onRecalculateInventory, 'recalc')} disabled={!!loadingAction} className={toolButtonClass}>
+                    {loadingAction === 'recalc' ? 'Running...' : 'Run'}
+                </button>
+            </div>
+            
+            <div className="flex items-center justify-between">
+                <div>
+                    <h4 className="font-semibold text-card-foreground">Bulk Price Update</h4>
+                    <p className="text-sm text-muted-foreground">Recalculates selling prices for all items based on their cost and the configured profit margin.</p>
+                </div>
+                <button onClick={() => handleToolClick(onBulkPriceUpdate, 'priceUpdate')} disabled={!!loadingAction} className={toolButtonClass}>
+                    {loadingAction === 'priceUpdate' ? 'Running...' : 'Run'}
+                </button>
+            </div>
+
+             <div className="flex items-center justify-between">
+                <div>
+                    <h4 className="font-semibold text-card-foreground">Bulk Stock Update (Sample)</h4>
+                    <p className="text-sm text-muted-foreground">Restocks items with less than 5 units back to 20 units.</p>
+                </div>
+                <button onClick={() => handleToolClick(onBulkStockUpdate, 'stockUpdate')} disabled={!!loadingAction} className={toolButtonClass}>
+                    {loadingAction === 'stockUpdate' ? 'Running...' : 'Run'}
+                </button>
+            </div>
+            
+             <div className="flex items-center justify-between">
+                <div>
+                    <h4 className="font-semibold text-card-foreground">Orphaned Data Check</h4>
+                    <p className="text-sm text-muted-foreground">Finds transaction items that point to products that have been deleted.</p>
+                </div>
+                <button onClick={() => handleToolClick(onOrphanedDataCleanup, 'orphan')} disabled={!!loadingAction} className={toolButtonClass}>
+                    {loadingAction === 'orphan' ? 'Running...' : 'Run Check'}
+                </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+                <div>
+                    <h4 className="font-semibold text-card-foreground">Refresh POS Transaction Names</h4>
+                    <p className="text-sm text-muted-foreground">Regenerate unique names for all "Point of Sale" transactions. Fixes duplicates.</p>
+                </div>
+                <button onClick={() => handleToolClick(onRefreshIncomeTransactionNames, 'refreshNames')} disabled={!!loadingAction} className={toolButtonClass}>
+                    {loadingAction === 'refreshNames' ? 'Refreshing...' : 'Refresh Names'}
+                </button>
+            </div>
+        </div>
+      </Card>
+      
+      <Card title="Advanced Reporting">
+          <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                  <div>
+                      <h4 className="font-semibold text-card-foreground">Generate Financial Report</h4>
+                      <p className="text-sm text-muted-foreground">Exports a detailed transaction history to a CSV file, similar to the cashbook view, with totals for income and expenses.</p>
+                  </div>
+                  <button onClick={() => handleToolClick(onGenerateFinancialReport, 'financialReport')} disabled={!!loadingAction} className={toolButtonClass}>
+                       {loadingAction === 'financialReport' ? 'Generating...' : 'Generate'}
+                  </button>
+              </div>
+              <div className="flex items-center justify-between">
+                  <div>
+                      <h4 className="font-semibold text-card-foreground">Profitability Analysis</h4>
+                      <p className="text-sm text-muted-foreground">Identify the most profitable items based on their cost and sales history.</p>
+                  </div>
+                  <button onClick={() => handleToolClick(onProfitabilityAnalysis, 'profitAnalysis')} disabled={!!loadingAction} className={toolButtonClass}>
+                      {loadingAction === 'profitAnalysis' ? 'Analyzing...' : 'Analyze'}
+                  </button>
+              </div>
+          </div>
       </Card>
     </div>
   );

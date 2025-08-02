@@ -11,10 +11,16 @@ interface NavItemProps {
 }
 
 const NavItem: React.FC<NavItemProps> = ({ label, icon, isActive, onClick }) => (
-    <button onClick={onClick} className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+    <button 
+        onClick={onClick} 
+        className={`flex flex-col items-center justify-center px-3 py-2 rounded-lg transition-all ${
+            isActive 
+                ? 'text-primary bg-primary/10 scale-105' 
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+        }`}
+    >
         {icon}
-        <span className="text-xs font-medium">{label}</span>
-        {isActive && <div className="h-1 w-8 bg-primary rounded-full mt-1"></div>}
+        <span className="text-xs font-medium mt-1">{label}</span>
     </button>
 );
 
@@ -33,17 +39,19 @@ const BottomNav: React.FC<BottomNavProps> = ({ currentPage, setCurrentPage }) =>
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 h-16 bg-card shadow-[0_-2px_10px_rgba(0,0,0,0.2)] flex md:hidden border-t border-border">
-            {navItems.map(item => (
-                <NavItem 
-                    key={item.page}
-                    label={item.label}
-                    icon={item.icon}
-                    isActive={currentPage === item.page}
-                    onClick={() => setCurrentPage(item.page)}
-                />
-            ))}
-        </div>
+        <nav className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border z-40 safe-bottom pb-[env(safe-area-inset-bottom)] lg:hidden">
+            <div className="container flex h-16 items-center justify-around max-w-md mx-auto">
+                {navItems.map(item => (
+                    <NavItem 
+                        key={item.page}
+                        label={item.label}
+                        icon={item.icon}
+                        isActive={currentPage === item.page}
+                        onClick={() => setCurrentPage(item.page)}
+                    />
+                ))}
+            </div>
+        </nav>
     );
 };
 

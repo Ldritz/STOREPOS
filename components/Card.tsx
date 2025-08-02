@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface CardProps {
@@ -6,18 +5,28 @@ interface CardProps {
   className?: string;
   title?: string;
   actions?: React.ReactNode;
+  variant?: 'default' | 'secondary' | 'glass';
+  id?: string;
 }
 
-const Card: React.FC<CardProps> = ({ children, className = '', title, actions }) => {
+const Card: React.FC<CardProps> = ({ children, className = '', title, actions, variant = 'default', id }) => {
+  const variants = {
+    default: 'bg-card border border-border/50',
+    secondary: 'bg-muted border border-muted-foreground/20',
+    glass: 'bg-card/70 backdrop-blur-sm border border-border/20'
+  };
+
   return (
-    <div className={`bg-card text-card-foreground border border-border rounded-lg overflow-hidden ${className}`}>
+    <div id={id} className={`rounded-xl shadow-sm overflow-hidden ${variants[variant]} ${className}`}>
       {(title || actions) && (
-        <div className="p-4 border-b border-border flex justify-between items-center">
-          {title && <h3 className="text-lg font-bold">{title}</h3>}
+        <div className={`px-6 py-4 border-b border-border/50 flex justify-between items-center ${
+          variant === 'glass' ? 'backdrop-blur-sm' : ''
+        }`}>
+          {title && <h2 className="text-lg font-semibold tracking-tight">{title}</h2>}
           {actions && <div className="flex items-center gap-2">{actions}</div>}
         </div>
       )}
-      <div className="p-4 sm:p-6">{children}</div>
+      <div className="px-6 py-4">{children}</div>
     </div>
   );
 };

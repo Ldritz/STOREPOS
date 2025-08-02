@@ -1,4 +1,5 @@
 
+
 export enum Page {
   Dashboard = 'DASHBOARD',
   Transactions = 'TRANSACTIONS',
@@ -11,7 +12,10 @@ export enum TransactionType {
   Expense = 'EXPENSE',
 }
 
-export type SyncStatus = 'synced' | 'syncing' | 'offline';
+export enum ExpenseSubtype {
+  General = 'GENERAL',
+  InventoryPurchase = 'INVENTORY_PURCHASE',
+}
 
 export interface AppSettings {
   storeName: string;
@@ -29,9 +33,10 @@ export interface Transaction {
   id: string;
   type: TransactionType;
   amount: number;
-  description: string;
+  name: string;
   date: string; // ISO string
   items?: CartItem[];
+  expenseSubtype?: ExpenseSubtype;
 }
 
 export interface InventoryItem {
@@ -43,4 +48,14 @@ export interface InventoryItem {
   category?: string;
   cost?: string;
   imageUrl?: string;
+  isDisabled?: boolean;
+}
+
+// New types for undo functionality
+export type AdminActionType = 'recalculateInventory' | 'bulkPriceUpdate' | 'bulkStockUpdate' | 'refreshIncomeNames';
+
+export interface LastActionBackup {
+  type: AdminActionType;
+  description: string;
+  data: { id: string; [key: string]: any }[];
 }
